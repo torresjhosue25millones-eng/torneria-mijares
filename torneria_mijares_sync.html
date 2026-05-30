@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tornería Mijares</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --steel:#1a2332;--steel2:#243044;--steel3:#2e3d54;
+  --accent:#e8a020;--accent2:#f0b840;
+  --green:#2a9d5c;--red:#c0392b;
+  --text:#f0f4f8;--text2:#a8b8cc;--text3:#6a7d94;
+  --border:#2e3d54;--card:#1e2d40;--card2:#243044;
+}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--steel);color:var(--text);min-height:100vh;font-size:15px}
+.header{background:var(--steel2);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100}
+.logo{width:40px;height:40px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;color:var(--steel);flex-shrink:0}
+.header-text h1{font-size:16px;font-weight:600}
+.header-text p{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
+.sync-status{margin-left:auto;font-size:11px;font-family:'IBM Plex Mono',monospace;padding:4px 10px;border-radius:20px;background:var(--steel3)}
+.sync-ok{color:#4fc88a;background:rgba(42,157,92,.2)}
+.sync-err{color:#fc8181;background:rgba(192,57,43,.2)}
+.sync-ing{color:var(--accent2);background:rgba(232,160,32,.2)}
+.nav{display:flex;background:var(--steel2);border-bottom:1px solid var(--border);overflow-x:auto}
+.nav-btn{flex:1;min-width:80px;padding:12px 8px;border:none;background:transparent;color:var(--text2);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:4px}
+.nav-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.nav-btn:hover:not(.active){color:var(--text);background:rgba(255,255,255,.04)}
+.content{padding:16px;max-width:720px;margin:0 auto}
+.section{display:none}.section.active{display:block}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.metric{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.metric-label{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.metric-value{font-size:22px;font-weight:600;font-family:'IBM Plex Mono',monospace}
+.mv-green{color:var(--green)}.mv-amber{color:var(--accent)}.mv-red{color:var(--red)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+.card-title{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;font-family:'IBM Plex Mono',monospace;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block}
+label{font-size:12px;color:var(--text3);display:block;margin-bottom:5px;margin-top:12px;text-transform:uppercase;letter-spacing:.4px;font-family:'IBM Plex Mono',monospace}
+input,select,textarea{width:100%;padding:9px 12px;background:var(--steel3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px;outline:none;transition:border .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+select option{background:var(--steel2)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.btn{padding:10px 18px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px;transition:all .2s}
+.btn:hover{background:var(--steel3)}
+.btn-primary{background:var(--accent);color:var(--steel);border-color:var(--accent);font-weight:600}
+.btn-primary:hover{background:var(--accent2)}
+.btn-danger{color:var(--red);border-color:transparent;background:transparent;padding:6px 10px;font-size:12px}
+.btn-danger:hover{background:rgba(192,57,43,.15)}
+.flex-end{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:8px;border-bottom:1px solid var(--border)}
+td{padding:9px 8px;border-bottom:1px solid var(--border);color:var(--text2)}
+tr:last-child td{border-bottom:none}
+.badge{display:inline-block;font-size:10px;padding:3px 8px;border-radius:20px;font-family:'IBM Plex Mono',monospace;font-weight:500}
+.bg{background:rgba(42,157,92,.2);color:#4fc88a}
+.ba{background:rgba(232,160,32,.2);color:var(--accent2)}
+.bb{background:rgba(66,153,225,.2);color:#63b3ed}
+.br{background:rgba(192,57,43,.2);color:#fc8181}
+.highlight{background:var(--steel3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:12px}
+.rl{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.rl:last-child{border-bottom:none}
+.rl.total{font-weight:600;font-size:15px;border-top:1px solid var(--border);padding-top:10px;margin-top:4px;color:var(--text)}
+.rl .gr{color:var(--green);font-family:'IBM Plex Mono',monospace}
+.rl span:last-child{font-family:'IBM Plex Mono',monospace}
+.empty{text-align:center;padding:30px;color:var(--text3);font-size:13px;font-family:'IBM Plex Mono',monospace}
+.tab-sub{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tsb{padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;font-size:12px;font-family:'IBM Plex Mono',monospace;transition:all .2s}
+.tsb.active{background:var(--card2);color:var(--accent);border-color:var(--accent)}
+.sub{display:none}.sub.active{display:block}
+.loading{text-align:center;padding:20px;color:var(--text3);font-family:'IBM Plex Mono',monospace;font-size:12px}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+@media(max-width:480px){.row2,.row3{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.content{padding:12px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">TM</div>
+  <div class="header-text"><h1>Tornería Mijares</h1><p>Sistema de gestión contable</p></div>
+  <div class="sync-status sync-ing" id="sync-status">⟳ Conectando...</div>
+</div>
+<nav class="nav">
+  <button class="nav-btn active" onclick="showSec('servicios')"><span>⚙️</span>Servicios</button>
+  <button class="nav-btn" onclick="showSec('cotizaciones')"><span>📋</span>Cotizaciones</button>
+  <button class="nav-btn" onclick="showSec('contabilidad')"><span>📊</span>Contabilidad</button>
+  <button class="nav-btn" onclick="showSec('cierre')"><span>📅</span>Cierre anual</button>
+</nav>
+<div class="content">
+
+<div id="sec-servicios" class="section active">
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">Mes actual</div><div class="metric-value mv-amber" id="m-mes">$0.00</div></div>
+    <div class="metric"><div class="metric-label">Total servicios</div><div class="metric-value" id="m-cnt">0</div></div>
+    <div class="metric"><div class="metric-label">Para la empresa</div><div class="metric-value mv-green" id="m-emp">$0.00</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Registrar servicio</div>
+    <label>Descripción</label><input type="text" id="s-desc" placeholder="Ej: Torno de pieza, cambio de rolinera...">
+    <div class="row2">
+      <div><label>Facturación</label><select id="s-tipo"><option value="sin-factura">Sin factura</option><option value="con-factura">Con factura</option></select></div>
+      <div><label>N° Factura</label><input type="text" id="s-fac" placeholder="Número o referencia"></div>
+    </div>
+    <div class="row2">
+      <div><label>Monto cobrado ($)</label><input type="number" id="s-monto" placeholder="0.00" oninput="calcS()"></div>
+      <div><label>Fecha</label><input type="date" id="s-fecha"></div>
+    </div>
+    <label>Material comprado ($) — 0 aplica 10% estimado</label>
+    <input type="number" id="s-mat" placeholder="0.00" value="0" oninput="calcS()">
+    <label>Mano de obra adicional</label>
+    <div class="row3">
+      <div><label style="margin-top:0">Soldador ($)</label><input type="number" id="s-sol" value="0" oninput="calcS()"></div>
+      <div><label style="margin-top:0">Ayudante ($)</label><input type="number" id="s-ay" value="0" oninput="calcS()"></div>
+      <div><label style="margin-top:0">Otro ($)</label><input type="number" id="s-ot" value="0" oninput="calcS()"></div>
+    </div>
+    <div class="highlight" id="s-prev" style="display:none"><div id="s-prev-l"></div></div>
+    <div class="flex-end"><button class="btn btn-primary" onclick="saveServicio()">💾 Guardar servicio</button></div>
+  </div>
+  <div class="card"><div class="card-title"><span class="dot"></span>Servicios registrados</div><div id="t-servicios"><div class="loading">// Cargando...</div></div></div>
+</div>
+
+<div id="sec-cotizaciones" class="section">
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Nueva cotización</div>
+    <div class="row2">
+      <div><label>Cliente</label><input type="text" id="c-cli" placeholder="Nombre o empresa"></div>
+      <div><label>Fecha</label><input type="date" id="c-fecha"></div>
+    </div>
+    <label>Descripción</label><textarea id="c-desc" rows="2" style="resize:vertical" placeholder="Detalle del servicio..."></textarea>
+    <div class="row2">
+      <div><label>Monto base ($)</label><input type="number" id="c-monto" placeholder="0.00" oninput="calcC()"></div>
+      <div><label>Material ($) — 0 = 10%</label><input type="number" id="c-mat" value="0" oninput="calcC()"></div>
+    </div>
+    <label>Mano de obra adicional</label>
+    <div class="row3">
+      <div><label style="margin-top:0">Soldador ($)</label><input type="number" id="c-sol" value="0" oninput="calcC()"></div>
+      <div><label style="margin-top:0">Ayudante ($)</label><input type="number" id="c-ay" value="0" oninput="calcC()"></div>
+      <div><label style="margin-top:0">Otro ($)</label><input type="number" id="c-ot" value="0" oninput="calcC()"></div>
+    </div>
+    <label>Notas</label><textarea id="c-notas" rows="2" style="resize:vertical"></textarea>
+    <div class="highlight" id="c-prev" style="display:none"><div id="c-prev-l"></div></div>
+    <div class="flex-end">
+      <button class="btn" onclick="calcC()">🧮 Calcular</button>
+      <button class="btn btn-primary" onclick="saveCotizacion()">💾 Guardar</button>
+    </div>
+  </div>
+  <div class="card"><div class="card-title"><span class="dot"></span>Cotizaciones guardadas</div><div id="t-cotizaciones"><div class="loading">// Cargando...</div></div></div>
+</div>
+
+<div id="sec-contabilidad" class="section">
+  <div class="tab-sub">
+    <button class="tsb active" onclick="showSub('sub-res')">Resumen</button>
+    <button class="tsb" onclick="showSub('sub-ing')">+ Ingreso</button>
+    <button class="tsb" onclick="showSub('sub-eg')">+ Egreso</button>
+    <button class="tsb" onclick="showSub('sub-mov')">Movimientos</button>
+  </div>
+  <div id="sub-res" class="sub active">
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Ingresos</div><div class="metric-value mv-green" id="cnt-ing">$0.00</div></div>
+      <div class="metric"><div class="metric-label">Egresos</div><div class="metric-value mv-red" id="cnt-eg">$0.00</div></div>
+      <div class="metric"><div class="metric-label">Balance</div><div class="metric-value" id="cnt-bal">$0.00</div></div>
+    </div>
+    <div class="card"><div class="card-title"><span class="dot"></span>Por categoría</div><div id="res-cats"></div></div>
+  </div>
+  <div id="sub-ing" class="sub">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Registrar ingreso</div>
+      <div class="row2">
+        <div><label>Descripción</label><input type="text" id="i-desc" placeholder="Concepto"></div>
+        <div><label>Cliente</label><input type="text" id="i-cli" placeholder="Nombre"></div>
+      </div>
+      <div class="row2">
+        <div><label>Monto ($)</label><input type="number" id="i-monto" placeholder="0.00"></div>
+        <div><label>Fecha</label><input type="date" id="i-fecha"></div>
+      </div>
+      <div class="row2">
+        <div><label>Categoría</label><select id="i-cat"><option>Servicios</option><option>Salida venta</option><option>Mantenimiento</option><option>Reparación</option><option>Otro</option></select></div>
+        <div><label>Estado de pago</label><select id="i-est"><option>Pagado Total</option><option>Pendiente</option><option>Abono 50%</option></select></div>
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="saveMov('ingreso')">💾 Guardar ingreso</button></div>
+    </div>
+  </div>
+  <div id="sub-eg" class="sub">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Registrar egreso</div>
+      <div class="row2">
+        <div><label>Descripción</label><input type="text" id="e-desc" placeholder="Concepto"></div>
+        <div><label>Proveedor</label><input type="text" id="e-prov" placeholder="Nombre"></div>
+      </div>
+      <div class="row2">
+        <div><label>Monto ($)</label><input type="number" id="e-monto" placeholder="0.00"></div>
+        <div><label>Fecha</label><input type="date" id="e-fecha"></div>
+      </div>
+      <label>Categoría</label>
+      <select id="e-cat"><option>Materiales</option><option>Compras</option><option>Herramientas</option><option>Gastos administrativos</option><option>Alquiler</option><option>Electricidad</option><option>Internet</option><option>Sueldo fijo</option><option>Comisión 40%</option><option>Representación</option><option>Mantenimiento</option><option>Otro</option></select>
+      <div class="flex-end"><button class="btn btn-primary" onclick="saveMov('egreso')">💾 Guardar egreso</button></div>
+    </div>
+  </div>
+  <div id="sub-mov" class="sub">
+    <div class="card"><div class="card-title"><span class="dot"></span>Todos los movimientos</div><div id="t-mov"><div class="loading">// Cargando...</div></div></div>
+  </div>
+</div>
+
+<div id="sec-cierre" class="section">
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Parámetros</div>
+    <div class="row2">
+      <div><label>Año</label><input type="number" id="anio" value="2026" oninput="calcCierre()"></div>
+      <div><label>Tasa ISR (%)</label><input type="number" id="isr" value="25" oninput="calcCierre()"></div>
+    </div>
+  </div>
+  <div class="card"><div class="card-title"><span class="dot"></span>Estado de resultados</div><div id="cierre-res"></div></div>
+  <div class="card"><div class="card-title"><span class="dot"></span>Detalle por categoría</div><div id="cierre-tabla"></div></div>
+</div>
+
+</div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbwNCoPWyWobvPcoUqmXChtuUh7Hv_UU50Sn8Whx67-m9rm9yN_VJRy52rknncI_MKY3/exec';
+const fmt = n => '$' + parseFloat(n||0).toFixed(2);
+const td = () => new Date().toISOString().split('T')[0];
+
+document.getElementById('s-fecha').value = td();
+document.getElementById('c-fecha').value = td();
+document.getElementById('i-fecha').value = td();
+document.getElementById('e-fecha').value = td();
+
+let SV=[], MV=[], CV=[];
+let syncOk = false;
+
+function setSyncStatus(estado) {
+  const el = document.getElementById('sync-status');
+  if(estado==='ok'){el.className='sync-status sync-ok';el.textContent='✓ Sincronizado';}
+  else if(estado==='err'){el.className='sync-status sync-err';el.textContent='✗ Sin conexión';}
+  else{el.className='sync-status sync-ing';el.textContent='⟳ Sincronizando...';}
+}
+
+async function apiGet(tabla) {
+  const r = await fetch(API + '?tabla=' + tabla);
+  const d = await r.json();
+  return d.datos || [];
+}
+
+async function apiPost(accion, tabla, datos) {
+  const r = await fetch(API, {
+    method:'POST',
+    body: JSON.stringify({accion, tabla, ...datos})
+  });
+  return await r.json();
+}
+
+function rowToMov(r) {
+  return {id:r[0],tipo:r[1],desc:r[2],monto:parseFloat(r[3])||0,cat:r[4],prov:r[5],fecha:r[6],estado:r[7]||''};
+}
+function rowToSv(r) {
+  return {id:r[0],desc:r[1],tipo:r[2],fac:r[3],fecha:r[4],v:parseFloat(r[5])||0,tornero:parseFloat(r[6])||0,admin:parseFloat(r[7])||0,matC:parseFloat(r[8])||0,s:parseFloat(r[9])||0,a:parseFloat(r[10])||0,o:parseFloat(r[11])||0,empresa:parseFloat(r[12])||0};
+}
+function rowToCv(r) {
+  return {id:r[0],cli:r[1],desc:r[2],notas:r[3],fecha:r[4],v:parseFloat(r[5])||0,empresa:parseFloat(r[6])||0};
+}
+
+async function cargarTodo() {
+  setSyncStatus('ing');
+  try {
+    const [rm, rs, rc] = await Promise.all([
+      apiGet('movimientos'),
+      apiGet('servicios'),
+      apiGet('cotizaciones')
+    ]);
+    MV = rm.slice(1).map(rowToMov);
+    SV = rs.slice(1).map(rowToSv);
+    CV = rc.slice(1).map(rowToCv);
+    syncOk = true;
+    setSyncStatus('ok');
+    renderSV(); updMetrics(); renderCV(); updCont(); renderMov();
+  } catch(e) {
+    setSyncStatus('err');
+    cargarLocal();
+  }
+}
+
+function cargarLocal() {
+  SV = JSON.parse(localStorage.getItem('tm_sv')||'[]');
+  MV = JSON.parse(localStorage.getItem('tm_mv')||'[]');
+  CV = JSON.parse(localStorage.getItem('tm_cv')||'[]');
+  renderSV(); updMetrics(); renderCV(); updCont(); renderMov();
+}
+
+function guardarLocal() {
+  localStorage.setItem('tm_sv', JSON.stringify(SV));
+  localStorage.setItem('tm_mv', JSON.stringify(MV));
+  localStorage.setItem('tm_cv', JSON.stringify(CV));
+}
+
+function showSec(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  const map={servicios:0,cotizaciones:1,contabilidad:2,cierre:3};
+  document.querySelectorAll('.nav-btn')[map[id]].classList.add('active');
+  if(id==='contabilidad'){updCont();renderMov();}
+  if(id==='cierre')calcCierre();
+}
+function showSub(id){
+  document.querySelectorAll('.sub').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tsb').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const map={'sub-res':0,'sub-ing':1,'sub-eg':2,'sub-mov':3};
+  if(map[id]!==undefined)document.querySelectorAll('.tsb')[map[id]].classList.add('active');
+  if(id==='sub-res')updCont();
+  if(id==='sub-mov')renderMov();
+}
+
+function calcD(m,mat,sol,ay,ot){
+  const v=parseFloat(m)||0;if(!v)return null;
+  const matV=parseFloat(mat)||0;
+  const matC=matV>0?matV:v*0.10;
+  const tornero=v*0.40,admin=v*0.05;
+  const s=parseFloat(sol)||0,a=parseFloat(ay)||0,o=parseFloat(ot)||0;
+  return{v,tornero,admin,matC,s,a,o,empresa:v-(tornero+admin+matC+s+a+o),matReal:matV>0};
+}
+function renderD(d,pid,lid){
+  if(!d){document.getElementById(pid).style.display='none';return}
+  document.getElementById(pid).style.display='block';
+  document.getElementById(lid).innerHTML=`
+    <div class="rl"><span>Monto cobrado</span><span>${fmt(d.v)}</span></div>
+    <div class="rl"><span>Mano de obra torno (40%)</span><span>${fmt(d.tornero)}</span></div>
+    <div class="rl"><span>${d.matReal?'Material (real)':'Material estimado (10%)'}</span><span>${fmt(d.matC)}</span></div>
+    <div class="rl"><span>Gastos admin (5%)</span><span>${fmt(d.admin)}</span></div>
+    ${d.s>0?`<div class="rl"><span>Soldador</span><span>${fmt(d.s)}</span></div>`:''}
+    ${d.a>0?`<div class="rl"><span>Ayudante</span><span>${fmt(d.a)}</span></div>`:''}
+    ${d.o>0?`<div class="rl"><span>Otro</span><span>${fmt(d.o)}</span></div>`:''}
+    <div class="rl total"><span>Para la empresa</span><span class="gr">${fmt(d.empresa)}</span></div>`;
+}
+function calcS(){renderD(calcD(document.getElementById('s-monto').value,document.getElementById('s-mat').value,document.getElementById('s-sol').value,document.getElementById('s-ay').value,document.getElementById('s-ot').value),'s-prev','s-prev-l');}
+function calcC(){renderD(calcD(document.getElementById('c-monto').value,document.getElementById('c-mat').value,document.getElementById('c-sol').value,document.getElementById('c-ay').value,document.getElementById('c-ot').value),'c-prev','c-prev-l');}
+
+async function saveServicio(){
+  const desc=document.getElementById('s-desc').value.trim();
+  const monto=parseFloat(document.getElementById('s-monto').value)||0;
+  if(!desc||!monto){alert('Escribe la descripción y el monto.');return}
+  const d=calcD(monto,document.getElementById('s-mat').value,document.getElementById('s-sol').value,document.getElementById('s-ay').value,document.getElementById('s-ot').value)||{v:monto,tornero:0,admin:0,matC:0,s:0,a:0,o:0,empresa:monto};
+  const id=Date.now();
+  const sv={id,desc,tipo:document.getElementById('s-tipo').value,fac:document.getElementById('s-fac').value,fecha:document.getElementById('s-fecha').value,...d};
+  SV.push(sv);guardarLocal();renderSV();updMetrics();
+  setSyncStatus('ing');
+  try{
+    await apiPost('guardar','servicios',{fila:[id,desc,sv.tipo,sv.fac,sv.fecha,d.v,d.tornero,d.admin,d.matC,d.s,d.a,d.o,d.empresa]});
+    setSyncStatus('ok');
+  }catch(e){setSyncStatus('err');}
+  ['s-desc','s-monto','s-fac'].forEach(id=>document.getElementById(id).value='');
+  ['s-mat','s-sol','s-ay','s-ot'].forEach(id=>document.getElementById(id).value='0');
+  document.getElementById('s-prev').style.display='none';
+}
+
+async function saveCotizacion(){
+  const cli=document.getElementById('c-cli').value.trim();
+  const monto=parseFloat(document.getElementById('c-monto').value)||0;
+  if(!cli||!monto){alert('Escribe el cliente y el monto.');return}
+  const d=calcD(monto,document.getElementById('c-mat').value,document.getElementById('c-sol').value,document.getElementById('c-ay').value,document.getElementById('c-ot').value)||{v:monto,empresa:monto};
+  const id=Date.now();
+  const cv={id,cli,desc:document.getElementById('c-desc').value,notas:document.getElementById('c-notas').value,fecha:document.getElementById('c-fecha').value,...d};
+  CV.push(cv);guardarLocal();renderCV();
+  setSyncStatus('ing');
+  try{
+    await apiPost('guardar','cotizaciones',{fila:[id,cli,cv.desc,cv.notas,cv.fecha,d.v,d.empresa]});
+    setSyncStatus('ok');
+  }catch(e){setSyncStatus('err');}
+  ['c-cli','c-monto','c-desc','c-notas'].forEach(id=>document.getElementById(id).value='');
+  ['c-mat','c-sol','c-ay','c-ot'].forEach(id=>document.getElementById(id).value='0');
+  document.getElementById('c-prev').style.display='none';
+  alert('Cotización guardada y sincronizada.');
+}
+
+async function saveMov(tipo){
+  const dId=tipo==='ingreso'?'i-desc':'e-desc';
+  const mId=tipo==='ingreso'?'i-monto':'e-monto';
+  const desc=document.getElementById(dId).value.trim();
+  const monto=parseFloat(document.getElementById(mId).value)||0;
+  if(!desc||!monto){alert('Completa descripción y monto.');return}
+  const id=Date.now();
+  const mv={id,tipo,desc,monto,
+    cat:document.getElementById(tipo==='ingreso'?'i-cat':'e-cat').value,
+    prov:document.getElementById(tipo==='ingreso'?'i-cli':'e-prov').value,
+    fecha:document.getElementById(tipo==='ingreso'?'i-fecha':'e-fecha').value,
+    estado:tipo==='ingreso'?document.getElementById('i-est').value:'Pagado Total'};
+  MV.push(mv);guardarLocal();updCont();renderMov();
+  setSyncStatus('ing');
+  try{
+    await apiPost('guardar','movimientos',{fila:[id,tipo,desc,monto,mv.cat,mv.prov,mv.fecha,mv.estado]});
+    setSyncStatus('ok');
+  }catch(e){setSyncStatus('err');}
+  document.getElementById(dId).value='';document.getElementById(mId).value='';
+  document.getElementById(tipo==='ingreso'?'i-cli':'e-prov').value='';
+  alert('Guardado y sincronizado ✓');
+}
+
+async function delS(id){
+  if(!confirm('¿Eliminar?'))return;
+  SV=SV.filter(s=>s.id!==id);guardarLocal();renderSV();updMetrics();
+  try{await apiPost('borrar','servicios',{id});}catch(e){}
+}
+async function delC(id){
+  if(!confirm('¿Eliminar?'))return;
+  CV=CV.filter(c=>c.id!==id);guardarLocal();renderCV();
+  try{await apiPost('borrar','cotizaciones',{id});}catch(e){}
+}
+async function delM(id){
+  if(!confirm('¿Eliminar?'))return;
+  MV=MV.filter(m=>String(m.id)!==String(id));guardarLocal();renderMov();updCont();
+  try{await apiPost('borrar','movimientos',{id});}catch(e){}
+}
+
+function renderSV(){
+  const el=document.getElementById('t-servicios');
+  if(!SV.length){el.innerHTML='<div class="empty">// Sin servicios registrados</div>';return}
+  el.innerHTML=`<table><thead><tr><th>Servicio</th><th>Tipo</th><th>Cobrado</th><th>Empresa</th><th></th></tr></thead><tbody>
+  ${SV.slice().reverse().map(s=>`<tr>
+    <td><div style="font-weight:500;color:var(--text)">${s.desc}</div><div style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${s.fecha}</div></td>
+    <td><span class="badge ${s.tipo==='con-factura'?'bb':'ba'}">${s.tipo==='con-factura'?'Con factura':'Sin factura'}</span></td>
+    <td style="font-family:'IBM Plex Mono',monospace">${fmt(s.v)}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;color:var(--green)">${fmt(s.empresa)}</td>
+    <td><button class="btn btn-danger" onclick="delS(${s.id})">✕</button></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+function renderCV(){
+  const el=document.getElementById('t-cotizaciones');
+  if(!CV.length){el.innerHTML='<div class="empty">// Sin cotizaciones</div>';return}
+  el.innerHTML=`<table><thead><tr><th>Cliente</th><th>Monto</th><th>Empresa</th><th></th></tr></thead><tbody>
+  ${CV.slice().reverse().map(c=>`<tr>
+    <td><div style="font-weight:500;color:var(--text)">${c.cli}</div><div style="font-size:11px;color:var(--text3)">${c.desc||''}</div></td>
+    <td style="font-family:'IBM Plex Mono',monospace">${fmt(c.v)}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;color:var(--green)">${fmt(c.empresa)}</td>
+    <td><button class="btn btn-danger" onclick="delC(${c.id})">✕</button></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+function renderMov(){
+  const el=document.getElementById('t-mov');
+  if(!MV.length){el.innerHTML='<div class="empty">// Sin movimientos</div>';return}
+  el.innerHTML=`<table><thead><tr><th>Descripción</th><th>Tipo</th><th>Monto</th><th></th></tr></thead><tbody>
+  ${MV.slice().reverse().map(m=>`<tr>
+    <td><div style="font-weight:500;color:var(--text)">${m.desc}</div><div style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${m.prov||''} · ${m.fecha}</div></td>
+    <td><span class="badge ${m.tipo==='ingreso'?'bg':'br'}">${m.tipo}</span></td>
+    <td style="font-family:'IBM Plex Mono',monospace;color:${m.tipo==='ingreso'?'var(--green)':'var(--red)'}">${m.tipo==='ingreso'?'+':'-'}${fmt(m.monto)}</td>
+    <td><button class="btn btn-danger" onclick="delM('${m.id}')">✕</button></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+
+function updMetrics(){
+  const now=new Date();const mes=now.getMonth();const yr=now.getFullYear();
+  const dm=SV.filter(s=>{const d=new Date(s.fecha);return d.getMonth()===mes&&d.getFullYear()===yr});
+  document.getElementById('m-mes').textContent=fmt(dm.reduce((a,s)=>a+(s.v||0),0));
+  document.getElementById('m-cnt').textContent=SV.length;
+  document.getElementById('m-emp').textContent=fmt(dm.reduce((a,s)=>a+(s.empresa||0),0));
+}
+function updCont(){
+  const ing=MV.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0);
+  const eg=MV.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0);
+  const bal=ing-eg;
+  document.getElementById('cnt-ing').textContent=fmt(ing);
+  document.getElementById('cnt-eg').textContent=fmt(eg);
+  const bel=document.getElementById('cnt-bal');
+  bel.textContent=fmt(bal);bel.className='metric-value '+(bal>=0?'mv-green':'mv-red');
+  const cats={};
+  MV.forEach(m=>{if(!cats[m.cat])cats[m.cat]={ing:0,eg:0};cats[m.cat][m.tipo==='ingreso'?'ing':'eg']+=m.monto;});
+  const labels=Object.keys(cats);
+  document.getElementById('res-cats').innerHTML=labels.length?
+    `<table><thead><tr><th>Categoría</th><th>Ingresos</th><th>Egresos</th><th>Neto</th></tr></thead><tbody>
+    ${labels.map(l=>{const n=cats[l].ing-cats[l].eg;return`<tr>
+      <td style="color:var(--text)">${l}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--green)">${cats[l].ing>0?fmt(cats[l].ing):'-'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--red)">${cats[l].eg>0?fmt(cats[l].eg):'-'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:${n>=0?'var(--green)':'var(--red)'};font-weight:500">${fmt(n)}</td>
+    </tr>`}).join('')}</tbody></table>`
+    :'<div class="empty">// Sin movimientos</div>';
+}
+function calcCierre(){
+  const anio=parseInt(document.getElementById('anio').value)||2026;
+  const isr=(parseFloat(document.getElementById('isr').value)||25)/100;
+  const am=MV.filter(m=>new Date(m.fecha).getFullYear()===anio);
+  const as=SV.filter(s=>new Date(s.fecha).getFullYear()===anio);
+  const ing=am.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0);
+  const eg=am.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0);
+  const ingS=as.reduce((a,s)=>a+(s.v||0),0);
+  const totalIng=ing+ingS,util=totalIng-eg,isrAmt=util>0?util*isr:0,neto=util-isrAmt;
+  document.getElementById('cierre-res').innerHTML=`
+    <div class="rl"><span>Ingresos contabilidad</span><span>${fmt(ing)}</span></div>
+    <div class="rl"><span>Ingresos servicios directos</span><span>${fmt(ingS)}</span></div>
+    <div class="rl"><span style="font-weight:500;color:var(--text)">Total ingresos ${anio}</span><span style="font-weight:500">${fmt(totalIng)}</span></div>
+    <div class="rl"><span>Total egresos ${anio}</span><span style="color:var(--red)">${fmt(eg)}</span></div>
+    <div class="rl total"><span>Utilidad bruta</span><span class="${util>=0?'gr':''}">${fmt(util)}</span></div>
+    <div class="rl"><span>ISR estimado (${(isr*100).toFixed(0)}%)</span><span style="color:var(--red)">${fmt(isrAmt)}</span></div>
+    <div class="rl total"><span>Utilidad neta estimada</span><span class="${neto>=0?'gr':''}">${fmt(neto)}</span></div>`;
+  const cats={};
+  am.forEach(m=>{if(!cats[m.cat])cats[m.cat]={ing:0,eg:0};cats[m.cat][m.tipo==='ingreso'?'ing':'eg']+=m.monto;});
+  const labels=Object.keys(cats);
+  document.getElementById('cierre-tabla').innerHTML=labels.length?
+    `<table><thead><tr><th>Categoría</th><th>Ingresos</th><th>Egresos</th><th>Neto</th></tr></thead><tbody>
+    ${labels.map(l=>{const n=cats[l].ing-cats[l].eg;return`<tr>
+      <td style="color:var(--text)">${l}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--green)">${cats[l].ing>0?fmt(cats[l].ing):'-'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--red)">${cats[l].eg>0?fmt(cats[l].eg):'-'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:${n>=0?'var(--green)':'var(--red)'}">${fmt(n)}</td>
+    </tr>`}).join('')}</tbody></table>`
+    :`<div class="empty">// Sin datos para ${anio}</div>`;
+}
+
+// Refresco automático cada 30 segundos
+setInterval(cargarTodo, 30000);
+cargarTodo();
+</script>
+</body>
+</html>
