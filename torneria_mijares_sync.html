@@ -218,7 +218,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbwNCoPWyWobvPcoUqmXChtuUh7Hv_UU50Sn8Whx67-m9rm9yN_VJRy52rknncI_MKY3/exec';
+const API = 'https://script.google.com/macros/s/AKfycbwwB1AQI3xY6wOh0GYUKy27jdcWg2keYf3YE-B45gVaMYCBiwrrmQ1NKgEgLwT3W6poZg/exec';
 const fmt = n => '$' + parseFloat(n||0).toFixed(2);
 const td = () => new Date().toISOString().split('T')[0];
 
@@ -507,7 +507,6 @@ function calcCierre(){
     :`<div class="empty">// Sin datos para ${anio}</div>`;
 }
 
-// Refresco automático cada 30 segundos
 setInterval(cargarTodo, 30000);
 cargarTodo();
 </script>
