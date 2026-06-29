@@ -100,10 +100,6 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <div class="card-title"><span class="dot"></span>Registrar servicio</div>
     <label>Descripción</label><input type="text" id="s-desc" placeholder="Ej: Torno de pieza, cambio de rolinera...">
     <div class="row2">
-      <div><label>Facturación</label><select id="s-tipo"><option value="sin-factura">Sin factura</option><option value="con-factura">Con factura</option></select></div>
-      <div><label>N° Factura</label><input type="text" id="s-fac" placeholder="Número o referencia"></div>
-    </div>
-    <div class="row2">
       <div><label>Monto cobrado ($)</label><input type="number" id="s-monto" placeholder="0.00" oninput="calcS()"></div>
       <div><label>Fecha</label><input type="date" id="s-fecha"></div>
     </div>
@@ -118,7 +114,12 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <div class="highlight" id="s-prev" style="display:none"><div id="s-prev-l"></div></div>
     <div class="flex-end"><button class="btn btn-primary" onclick="saveServicio()">💾 Guardar servicio</button></div>
   </div>
-  <div class="card"><div class="card-title"><span class="dot"></span>Servicios registrados</div><div id="t-servicios"><div class="loading">// Cargando...</div></div></div>
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Servicios registrados</div>
+    <label style="margin-top:0">Filtrar por mes</label>
+    <select id="filtro-serv-mes" onchange="renderSV()"><option value="">Todos los meses</option></select>
+    <div id="t-servicios" style="margin-top:14px"><div class="loading">// Cargando...</div></div>
+  </div>
 </div>
 
 <div id="sec-cotizaciones" class="section">
@@ -155,8 +156,15 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <button class="tsb" onclick="showSub('sub-ing')">+ Ingreso</button>
     <button class="tsb" onclick="showSub('sub-eg')">+ Egreso</button>
     <button class="tsb" onclick="showSub('sub-mov')">Movimientos</button>
+    <button class="tsb" onclick="showSub('sub-cta')">Cuentas</button>
   </div>
   <div id="sub-res" class="sub active">
+    <div class="card-title" style="margin-bottom:8px"><span class="dot"></span>Este mes</div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Cobrado este mes</div><div class="metric-value mv-green" id="mes-ing">$0.00</div></div>
+      <div class="metric"><div class="metric-label">Gastado este mes</div><div class="metric-value mv-red" id="mes-eg">$0.00</div></div>
+    </div>
+    <div class="card-title" style="margin-bottom:8px">Total acumulado</div>
     <div class="metrics">
       <div class="metric"><div class="metric-label">Ingresos</div><div class="metric-value mv-green" id="cnt-ing">$0.00</div></div>
       <div class="metric"><div class="metric-label">Egresos</div><div class="metric-value mv-red" id="cnt-eg">$0.00</div></div>
@@ -176,7 +184,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
         <div><label>Fecha</label><input type="date" id="i-fecha"></div>
       </div>
       <div class="row2">
-        <div><label>Categoría</label><select id="i-cat"><option>Servicios</option><option>Salida venta</option><option>Mantenimiento</option><option>Reparación</option><option>Otro</option></select></div>
+        <div><label>Categoría</label><select id="i-cat"><option>Factura legal</option><option>Aporte de capital / Préstamo</option><option>Servicios</option><option>Salida venta</option><option>Mantenimiento</option><option>Reparación</option><option>Otro</option></select></div>
         <div><label>Estado de pago</label><select id="i-est"><option>Pagado Total</option><option>Pendiente</option><option>Abono 50%</option></select></div>
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="saveMov('ingreso')">💾 Guardar ingreso</button></div>
@@ -193,13 +201,26 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
         <div><label>Monto ($)</label><input type="number" id="e-monto" placeholder="0.00"></div>
         <div><label>Fecha</label><input type="date" id="e-fecha"></div>
       </div>
-      <label>Categoría</label>
-      <select id="e-cat"><option>Materiales</option><option>Compras</option><option>Herramientas</option><option>Gastos administrativos</option><option>Alquiler</option><option>Electricidad</option><option>Internet</option><option>Sueldo fijo</option><option>Comisión 40%</option><option>Representación</option><option>Mantenimiento</option><option>Otro</option></select>
+      <div class="row2">
+        <div><label>Categoría</label>
+        <select id="e-cat"><option>Materiales</option><option>Compras</option><option>Herramientas</option><option>Gastos administrativos</option><option>Alquiler</option><option>Electricidad</option><option>Internet</option><option>Sueldo fijo</option><option>Comisión 40%</option><option>Representación</option><option>Mantenimiento</option><option>Otro</option></select></div>
+        <div><label>Estado de pago</label><select id="e-est"><option>Pagado Total</option><option>Pendiente</option></select></div>
+      </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="saveMov('egreso')">💾 Guardar egreso</button></div>
     </div>
   </div>
   <div id="sub-mov" class="sub">
-    <div class="card"><div class="card-title"><span class="dot"></span>Todos los movimientos</div><div id="t-mov"><div class="loading">// Cargando...</div></div></div>
+    <label style="margin-top:0">Filtrar por mes</label>
+    <select id="filtro-mov-mes" onchange="renderMov()"><option value="">Todos los meses</option></select>
+    <div class="card" style="margin-top:14px"><div class="card-title"><span class="dot"></span>Todos los movimientos</div><div id="t-mov"><div class="loading">// Cargando...</div></div></div>
+  </div>
+  <div id="sub-cta" class="sub">
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Cuentas por cobrar</div><div class="metric-value mv-amber" id="cta-cobrar-tot">$0.00</div></div>
+      <div class="metric"><div class="metric-label">Cuentas por pagar</div><div class="metric-value mv-red" id="cta-pagar-tot">$0.00</div></div>
+    </div>
+    <div class="card"><div class="card-title"><span class="dot"></span>Por cobrar (clientes que deben)</div><div id="t-cobrar"></div></div>
+    <div class="card"><div class="card-title"><span class="dot"></span>Por pagar (a proveedores)</div><div id="t-pagar"></div></div>
   </div>
 </div>
 
@@ -274,7 +295,8 @@ async function cargarTodo() {
     CV = rc.slice(1).map(rowToCv);
     syncOk = true;
     setSyncStatus('ok');
-    renderSV(); updMetrics(); renderCV(); updCont(); renderMov();
+    poblarFiltroMeses('filtro-serv-mes',SV);poblarFiltroMeses('filtro-mov-mes',MV);
+    renderSV(); updMetrics(); renderCV(); updCont(); renderMov(); renderCuentas();
   } catch(e) {
     setSyncStatus('err');
     cargarLocal();
@@ -285,7 +307,8 @@ function cargarLocal() {
   SV = JSON.parse(localStorage.getItem('tm_sv')||'[]');
   MV = JSON.parse(localStorage.getItem('tm_mv')||'[]');
   CV = JSON.parse(localStorage.getItem('tm_cv')||'[]');
-  renderSV(); updMetrics(); renderCV(); updCont(); renderMov();
+  poblarFiltroMeses('filtro-serv-mes',SV);poblarFiltroMeses('filtro-mov-mes',MV);
+  renderSV(); updMetrics(); renderCV(); updCont(); renderMov(); renderCuentas();
 }
 
 function guardarLocal() {
@@ -300,17 +323,18 @@ function showSec(id){
   document.getElementById('sec-'+id).classList.add('active');
   const map={servicios:0,cotizaciones:1,contabilidad:2,cierre:3};
   document.querySelectorAll('.nav-btn')[map[id]].classList.add('active');
-  if(id==='contabilidad'){updCont();renderMov();}
+  if(id==='contabilidad'){updCont();renderMov();renderCuentas();}
   if(id==='cierre')calcCierre();
 }
 function showSub(id){
   document.querySelectorAll('.sub').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tsb').forEach(b=>b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const map={'sub-res':0,'sub-ing':1,'sub-eg':2,'sub-mov':3};
+  const map={'sub-res':0,'sub-ing':1,'sub-eg':2,'sub-mov':3,'sub-cta':4};
   if(map[id]!==undefined)document.querySelectorAll('.tsb')[map[id]].classList.add('active');
   if(id==='sub-res')updCont();
   if(id==='sub-mov')renderMov();
+  if(id==='sub-cta')renderCuentas();
 }
 
 function calcD(m,mat,sol,ay,ot){
@@ -343,14 +367,14 @@ async function saveServicio(){
   if(!desc||!monto){alert('Escribe la descripción y el monto.');return}
   const d=calcD(monto,document.getElementById('s-mat').value,document.getElementById('s-sol').value,document.getElementById('s-ay').value,document.getElementById('s-ot').value)||{v:monto,tornero:0,admin:0,matC:0,s:0,a:0,o:0,empresa:monto};
   const id=Date.now();
-  const sv={id,desc,tipo:document.getElementById('s-tipo').value,fac:document.getElementById('s-fac').value,fecha:document.getElementById('s-fecha').value,...d};
-  SV.push(sv);guardarLocal();renderSV();updMetrics();
+  const sv={id,desc,tipo:'sin-factura',fac:'',fecha:document.getElementById('s-fecha').value,...d};
+  SV.push(sv);guardarLocal();renderSV();updMetrics();poblarFiltroMeses('filtro-serv-mes',SV);
   setSyncStatus('ing');
   try{
     await apiPost('guardar','servicios',{fila:[id,desc,sv.tipo,sv.fac,sv.fecha,d.v,d.tornero,d.admin,d.matC,d.s,d.a,d.o,d.empresa]});
     setSyncStatus('ok');
   }catch(e){setSyncStatus('err');}
-  ['s-desc','s-monto','s-fac'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('s-desc').value='';document.getElementById('s-monto').value='';
   ['s-mat','s-sol','s-ay','s-ot'].forEach(id=>document.getElementById(id).value='0');
   document.getElementById('s-prev').style.display='none';
 }
@@ -385,8 +409,8 @@ async function saveMov(tipo){
     cat:document.getElementById(tipo==='ingreso'?'i-cat':'e-cat').value,
     prov:document.getElementById(tipo==='ingreso'?'i-cli':'e-prov').value,
     fecha:document.getElementById(tipo==='ingreso'?'i-fecha':'e-fecha').value,
-    estado:tipo==='ingreso'?document.getElementById('i-est').value:'Pagado Total'};
-  MV.push(mv);guardarLocal();updCont();renderMov();
+    estado:document.getElementById(tipo==='ingreso'?'i-est':'e-est').value};
+  MV.push(mv);guardarLocal();updCont();renderMov();renderCuentas();poblarFiltroMeses('filtro-mov-mes',MV);
   setSyncStatus('ing');
   try{
     await apiPost('guardar','movimientos',{fila:[id,tipo,desc,monto,mv.cat,mv.prov,mv.fecha,mv.estado]});
@@ -413,13 +437,43 @@ async function delM(id){
   try{await apiPost('borrar','movimientos',{id});}catch(e){}
 }
 
+function mesesDeFechas(arr){
+  const set=new Set();
+  arr.forEach(x=>{if(x.fecha)set.add(x.fecha.slice(0,7));});
+  return Array.from(set).sort().reverse();
+}
+function poblarFiltroMeses(selId,arr){
+  const sel=document.getElementById(selId);
+  if(!sel)return;
+  const nombres=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const actual=sel.value;
+  const mesActual=new Date().toISOString().slice(0,7);
+  const meses=new Set(mesesDeFechas(arr));
+  meses.add(mesActual);
+  const lista=Array.from(meses).sort().reverse();
+  sel.innerHTML='<option value="">Todos los meses</option>'+lista.map(m=>{
+    const [y,mo]=m.split('-');
+    return `<option value="${m}">${nombres[parseInt(mo,10)-1]} ${y}</option>`;
+  }).join('');
+  if(!sel.dataset.defaulted){
+    sel.value=mesActual;
+    sel.dataset.defaulted='1';
+  } else {
+    sel.value=actual;
+  }
+}
 function renderSV(){
   const el=document.getElementById('t-servicios');
-  if(!SV.length){el.innerHTML='<div class="empty">// Sin servicios registrados</div>';return}
-  el.innerHTML=`<table><thead><tr><th>Servicio</th><th>Tipo</th><th>Cobrado</th><th>Empresa</th><th></th></tr></thead><tbody>
-  ${SV.slice().reverse().map(s=>`<tr>
-    <td><div style="font-weight:500;color:var(--text)">${s.desc}</div><div style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${s.fecha}</div></td>
-    <td><span class="badge ${s.tipo==='con-factura'?'bb':'ba'}">${s.tipo==='con-factura'?'Con factura':'Sin factura'}</span></td>
+  const f=document.getElementById('filtro-serv-mes').value;
+  const lista=(f?SV.filter(s=>s.fecha&&s.fecha.startsWith(f)):SV).slice().reverse();
+  if(!lista.length){el.innerHTML='<div class="empty">// Sin servicios registrados</div>';return}
+  el.innerHTML=`<table><thead><tr><th>Servicio</th><th>Cobrado</th><th>Empresa</th><th></th></tr></thead><tbody>
+  ${lista.map(s=>`<tr>
+    <td>
+      <div style="font-weight:500;color:var(--text)">${s.desc}</div>
+      <div style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${s.fecha}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px">Tornero ${fmt(s.tornero)} · ${s.matC>0?'Material '+fmt(s.matC):''} · Admin ${fmt(s.admin)}${s.s>0?` · Soldador ${fmt(s.s)}`:''}${s.a>0?` · Ayudante ${fmt(s.a)}`:''}${s.o>0?` · Otro ${fmt(s.o)}`:''}</div>
+    </td>
     <td style="font-family:'IBM Plex Mono',monospace">${fmt(s.v)}</td>
     <td style="font-family:'IBM Plex Mono',monospace;color:var(--green)">${fmt(s.empresa)}</td>
     <td><button class="btn btn-danger" onclick="delS(${s.id})">✕</button></td>
@@ -438,14 +492,36 @@ function renderCV(){
 }
 function renderMov(){
   const el=document.getElementById('t-mov');
-  if(!MV.length){el.innerHTML='<div class="empty">// Sin movimientos</div>';return}
+  const f=document.getElementById('filtro-mov-mes').value;
+  const lista=(f?MV.filter(m=>m.fecha&&m.fecha.startsWith(f)):MV).slice().reverse();
+  if(!lista.length){el.innerHTML='<div class="empty">// Sin movimientos</div>';return}
   el.innerHTML=`<table><thead><tr><th>Descripción</th><th>Tipo</th><th>Monto</th><th></th></tr></thead><tbody>
-  ${MV.slice().reverse().map(m=>`<tr>
-    <td><div style="font-weight:500;color:var(--text)">${m.desc}</div><div style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${m.prov||''} · ${m.fecha}</div></td>
+  ${lista.map(m=>`<tr>
+    <td><div style="font-weight:500;color:var(--text)">${m.desc}</div><div style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace">${m.prov||''} · ${m.fecha} · ${m.estado||''}</div></td>
     <td><span class="badge ${m.tipo==='ingreso'?'bg':'br'}">${m.tipo}</span></td>
     <td style="font-family:'IBM Plex Mono',monospace;color:${m.tipo==='ingreso'?'var(--green)':'var(--red)'}">${m.tipo==='ingreso'?'+':'-'}${fmt(m.monto)}</td>
     <td><button class="btn btn-danger" onclick="delM('${m.id}')">✕</button></td>
   </tr>`).join('')}</tbody></table>`;
+}
+function renderCuentas(){
+  const cobrar=MV.filter(m=>m.tipo==='ingreso'&&m.estado&&m.estado!=='Pagado Total');
+  const pagar=MV.filter(m=>m.tipo==='egreso'&&m.estado&&m.estado!=='Pagado Total');
+  document.getElementById('cta-cobrar-tot').textContent=fmt(cobrar.reduce((a,m)=>a+m.monto,0));
+  document.getElementById('cta-pagar-tot').textContent=fmt(pagar.reduce((a,m)=>a+m.monto,0));
+  const elC=document.getElementById('t-cobrar');
+  elC.innerHTML=cobrar.length?`<table><thead><tr><th>Cliente</th><th>Estado</th><th>Monto</th></tr></thead><tbody>
+    ${cobrar.slice().reverse().map(m=>`<tr>
+      <td><div style="color:var(--text)">${m.desc}</div><div style="font-size:11px;color:var(--text3)">${m.prov||''} · ${m.fecha}</div></td>
+      <td><span class="badge ba">${m.estado}</span></td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--accent)">${fmt(m.monto)}</td>
+    </tr>`).join('')}</tbody></table>`:'<div class="empty">// Nada pendiente por cobrar</div>';
+  const elP=document.getElementById('t-pagar');
+  elP.innerHTML=pagar.length?`<table><thead><tr><th>Proveedor</th><th>Estado</th><th>Monto</th></tr></thead><tbody>
+    ${pagar.slice().reverse().map(m=>`<tr>
+      <td><div style="color:var(--text)">${m.desc}</div><div style="font-size:11px;color:var(--text3)">${m.prov||''} · ${m.fecha}</div></td>
+      <td><span class="badge br">${m.estado}</span></td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--red)">${fmt(m.monto)}</td>
+    </tr>`).join('')}</tbody></table>`:'<div class="empty">// Nada pendiente por pagar</div>';
 }
 
 function updMetrics(){
@@ -456,6 +532,10 @@ function updMetrics(){
   document.getElementById('m-emp').textContent=fmt(dm.reduce((a,s)=>a+(s.empresa||0),0));
 }
 function updCont(){
+  const now=new Date();const mesActual=now.toISOString().slice(0,7);
+  const movMes=MV.filter(m=>m.fecha&&m.fecha.startsWith(mesActual));
+  document.getElementById('mes-ing').textContent=fmt(movMes.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0));
+  document.getElementById('mes-eg').textContent=fmt(movMes.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0));
   const ing=MV.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0);
   const eg=MV.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0);
   const bal=ing-eg;
@@ -476,23 +556,26 @@ function updCont(){
     </tr>`}).join('')}</tbody></table>`
     :'<div class="empty">// Sin movimientos</div>';
 }
+const CAT_CAPITAL='Aporte de capital / Préstamo';
 function calcCierre(){
   const anio=parseInt(document.getElementById('anio').value)||2026;
   const isr=(parseFloat(document.getElementById('isr').value)||25)/100;
   const am=MV.filter(m=>new Date(m.fecha).getFullYear()===anio);
   const as=SV.filter(s=>new Date(s.fecha).getFullYear()===anio);
-  const ing=am.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0);
+  const ingCapital=am.filter(m=>m.tipo==='ingreso'&&m.cat===CAT_CAPITAL).reduce((a,m)=>a+m.monto,0);
+  const ing=am.filter(m=>m.tipo==='ingreso'&&m.cat!==CAT_CAPITAL).reduce((a,m)=>a+m.monto,0);
   const eg=am.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0);
   const ingS=as.reduce((a,s)=>a+(s.v||0),0);
   const totalIng=ing+ingS,util=totalIng-eg,isrAmt=util>0?util*isr:0,neto=util-isrAmt;
   document.getElementById('cierre-res').innerHTML=`
-    <div class="rl"><span>Ingresos contabilidad</span><span>${fmt(ing)}</span></div>
+    <div class="rl"><span>Ingresos contabilidad (gravable)</span><span>${fmt(ing)}</span></div>
     <div class="rl"><span>Ingresos servicios directos</span><span>${fmt(ingS)}</span></div>
-    <div class="rl"><span style="font-weight:500;color:var(--text)">Total ingresos ${anio}</span><span style="font-weight:500">${fmt(totalIng)}</span></div>
+    <div class="rl"><span style="font-weight:500;color:var(--text)">Total ingresos gravables ${anio}</span><span style="font-weight:500">${fmt(totalIng)}</span></div>
     <div class="rl"><span>Total egresos ${anio}</span><span style="color:var(--red)">${fmt(eg)}</span></div>
     <div class="rl total"><span>Utilidad bruta</span><span class="${util>=0?'gr':''}">${fmt(util)}</span></div>
     <div class="rl"><span>ISR estimado (${(isr*100).toFixed(0)}%)</span><span style="color:var(--red)">${fmt(isrAmt)}</span></div>
-    <div class="rl total"><span>Utilidad neta estimada</span><span class="${neto>=0?'gr':''}">${fmt(neto)}</span></div>`;
+    <div class="rl total"><span>Utilidad neta estimada</span><span class="${neto>=0?'gr':''}">${fmt(neto)}</span></div>
+    ${ingCapital>0?`<div class="rl" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)"><span>Aportes de capital / préstamos (no gravable)</span><span>${fmt(ingCapital)}</span></div>`:''}`;
   const cats={};
   am.forEach(m=>{if(!cats[m.cat])cats[m.cat]={ing:0,eg:0};cats[m.cat][m.tipo==='ingreso'?'ing':'eg']+=m.monto;});
   const labels=Object.keys(cats);
