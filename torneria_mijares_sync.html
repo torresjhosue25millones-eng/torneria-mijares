@@ -146,9 +146,9 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 <!-- ═══════════════════ SERVICIOS ═══════════════════ -->
 <div id="sec-servicios" class="section active">
   <div class="metrics">
-    <div class="metric"><div class="metric-label">Mes actual</div><div class="metric-value mv-amber" id="m-mes">$0.00</div></div>
-    <div class="metric"><div class="metric-label">Total servicios</div><div class="metric-value" id="m-cnt">0</div></div>
-    <div class="metric"><div class="metric-label">Para empresa</div><div class="metric-value mv-green" id="m-emp">$0.00</div></div>
+    <div class="metric"><div class="metric-label">Cobrado este mes</div><div class="metric-value mv-amber" id="m-mes">$0.00</div></div>
+    <div class="metric"><div class="metric-label">Tornero este mes</div><div class="metric-value mv-green" id="m-torn">$0.00</div></div>
+    <div class="metric"><div class="metric-label">Banco este mes</div><div class="metric-value mv-green" id="m-banco">$0.00</div></div>
   </div>
   <div class="card">
     <div class="card-title"><span class="dot"></span>Registrar servicio</div>
@@ -179,9 +179,9 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 <div id="sec-cotizaciones" class="section">
   <div class="tab-sub">
     <button class="tsb active" onclick="showSubCot('sub-cot-form')">Nueva Cotización</button>
-    <button class="tsb" onclick="showSubCot('sub-cot-lista')">Guardadas</button>
+    <button class="tsb" onclick="showSubCot('sub-cot-lista')">Cotiz. guardadas</button>
     <button class="tsb" onclick="showSubCot('sub-rec-form')">Nuevo Recibo</button>
-    <button class="tsb" onclick="showSubCot('sub-rec-lista')">Recibos</button>
+    <button class="tsb" onclick="showSubCot('sub-rec-lista')">Recibos guardados</button>
   </div>
 
   <!-- Nueva cotización -->
@@ -562,9 +562,26 @@ function guardarLocal(){
 
 function postCarga(){
   poblarFiltros();
+  autoPopularClientes();
   renderSV(); updMetrics(); renderCV(); updCont(); renderMov();
   renderCuentas(); renderReporte(); renderClientes(); renderRecibos();
   poblarSelectClientes();
+  setNextNums();
+}
+
+function autoPopularClientes(){
+  const legal=MV.filter(m=>m.tipo==='ingreso'&&m.cat==='Factura legal');
+  const nombresExist=new Set(CL.map(c=>c.nombre.toLowerCase()));
+  let nuevos=0;
+  legal.forEach(m=>{
+    const nombre=(m.prov||m.desc.replace(/^Factura a:\s*/,'')).trim();
+    if(nombre&&!nombresExist.has(nombre.toLowerCase())){
+      CL.push({id:'cli-dgi-'+nombre.replace(/[^a-z0-9]/gi,'').toLowerCase(),nombre,ruc:'',email:'',tel:'',dir:'Panamá',sector:'Panamá'});
+      nombresExist.add(nombre.toLowerCase());
+      nuevos++;
+    }
+  });
+  if(nuevos>0)guardarLocal();
 }
 
 // ── Month filter utilities ──
@@ -680,12 +697,23 @@ function renderSV(){
     <td><button class="btn btn-danger" onclick="delS('${s.id}')">✕</button></td>
   </tr>`).join('')}</tbody></table>`;
 }
+function calcBanco(svArr, mvArr){
+  const cobradoSV = svArr.reduce((a,s)=>a+(s.v||0),0);
+  const ingMV     = mvArr.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0);
+  const egMV      = mvArr.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0);
+  const factLeg   = mvArr.filter(m=>m.tipo==='ingreso'&&m.cat==='Factura legal').reduce((a,m)=>a+m.monto,0);
+  const tornero   = svArr.reduce((a,s)=>a+(s.tornero||0),0) + factLeg*0.40;
+  const soldAy    = svArr.reduce((a,s)=>a+(s.s||0)+(s.a||0),0);
+  return {cobrado:cobradoSV+ingMV, egMV, tornero, soldAy, banco:cobradoSV+ingMV-egMV-tornero-soldAy};
+}
 function updMetrics(){
   const now=new Date();const mes=now.getMonth();const yr=now.getFullYear();
   const dm=SV.filter(s=>{const d=new Date(s.fecha+' 12:00');return d.getMonth()===mes&&d.getFullYear()===yr});
-  document.getElementById('m-mes').textContent=fmt(dm.reduce((a,s)=>a+(s.v||0),0));
-  document.getElementById('m-cnt').textContent=SV.length;
-  document.getElementById('m-emp').textContent=fmt(dm.reduce((a,s)=>a+(s.empresa||0),0));
+  const mvMes=MV.filter(m=>{const d=new Date(m.fecha+' 12:00');return d.getMonth()===mes&&d.getFullYear()===yr;});
+  const r=calcBanco(dm,mvMes);
+  document.getElementById('m-mes').textContent=fmt(r.cobrado);
+  document.getElementById('m-torn').textContent=fmt(r.tornero);
+  document.getElementById('m-banco').textContent=fmt(r.banco);
 }
 async function delS(id){
   if(!confirm('¿Eliminar servicio?'))return;
@@ -834,94 +862,82 @@ function renderReporte(){
   if(!meses.length){el.innerHTML='<div class="empty">// Sin datos</div>';return}
 
   let html='';
-  let totIng=0,totEg=0,totBal=0,totTornero=0,totAy=0,totSol=0,totMat=0,totHer=0,totAdmin=0;
+  const ADMIN_CATS=['Gastos administrativos','Internet','Alquiler','Electricidad','Sueldo fijo','Cuota préstamo','Representación'];
+  let totCob=0,totEg=0,totTorn=0,totSol=0,totAy=0,totMat=0,totAdmin=0,totBanco=0;
 
   if(!filtro){
-    // Tabla resumen de todos los meses
+    // Tabla mes por mes — columna BANCO = todo lo cobrado − egresos − tornero − soldador − ayudante
     html=`<div class="rep-wrap"><table class="rep-table">
     <thead><tr>
-      <th>Mes</th><th>Ingresos</th><th>Egresos</th><th>Balance</th>
-      <th>Tornero</th><th>Ayudante</th><th>Soldador</th><th>Material</th>
-      <th>Herramientas</th><th>G.Admin</th>
+      <th>Mes</th><th>Cobrado</th><th>Egresos</th><th>Tornero</th><th>Soldador</th><th>Ayudante</th><th>Material</th><th>G.Admin</th>
+      <th style="color:var(--accent2);background:rgba(232,160,32,.15)">BANCO</th>
     </tr></thead><tbody>`;
     meses.forEach(mes=>{
       const mvM=MV.filter(m=>(m.fecha||'').startsWith(mes));
       const svM=SV.filter(s=>(s.fecha||'').startsWith(mes));
-      const ing=mvM.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0);
-      const eg=mvM.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0);
-      const bal=ing-eg;
-      const tornero=svM.reduce((a,s)=>a+s.tornero,0);
-      const ay=svM.reduce((a,s)=>a+s.a,0);
+      const r=calcBanco(svM,mvM);
       const sol=svM.reduce((a,s)=>a+s.s,0);
-      const mat=svM.reduce((a,s)=>a+s.matC,0)+mvM.filter(m=>m.cat==='Materiales').reduce((a,m)=>a+m.monto,0);
-      const her=mvM.filter(m=>m.cat==='Herramientas').reduce((a,m)=>a+m.monto,0);
-      const admin=svM.reduce((a,s)=>a+s.admin,0)+mvM.filter(m=>m.cat==='Gastos administrativos').reduce((a,m)=>a+m.monto,0);
-      totIng+=ing;totEg+=eg;totBal+=bal;totTornero+=tornero;totAy+=ay;totSol+=sol;totMat+=mat;totHer+=her;totAdmin+=admin;
-      const c=n=>n>0?`<span style="color:var(--green)">${fmt(n)}</span>`:'-';
-      const cb=n=>n===0?'-':`<span style="color:${n>0?'var(--green)':'var(--red)'}">${fmt(n)}</span>`;
+      const ay=svM.reduce((a,s)=>a+s.a,0);
+      const mat=svM.reduce((a,s)=>a+s.matC,0)+mvM.filter(m=>['Materiales','Compras','Herramientas'].includes(m.cat)).reduce((a,m)=>a+m.monto,0);
+      const admin=mvM.filter(m=>m.tipo==='egreso'&&ADMIN_CATS.includes(m.cat)).reduce((a,m)=>a+m.monto,0);
+      totCob+=r.cobrado;totEg+=r.egMV;totTorn+=r.tornero;totSol+=sol;totAy+=ay;totMat+=mat;totAdmin+=admin;totBanco+=r.banco;
+      const c=n=>n>0?fmt(n):'-';
       html+=`<tr>
         <td>${labelMes(mes)}</td>
-        <td style="color:var(--green)">${ing>0?fmt(ing):'-'}</td>
-        <td style="color:var(--red)">${eg>0?fmt(eg):'-'}</td>
-        <td>${cb(bal)}</td>
-        <td>${c(tornero)}</td><td>${c(ay)}</td><td>${c(sol)}</td>
-        <td>${c(mat)}</td><td>${c(her)}</td><td>${c(admin)}</td>
+        <td style="color:var(--green)">${r.cobrado>0?fmt(r.cobrado):'-'}</td>
+        <td style="color:var(--red)">${r.egMV>0?fmt(r.egMV):'-'}</td>
+        <td>${c(r.tornero)}</td><td>${c(sol)}</td><td>${c(ay)}</td>
+        <td>${c(mat)}</td><td>${c(admin)}</td>
+        <td style="font-weight:700;color:${r.banco>=0?'var(--green)':'var(--red)'};">${fmt(r.banco)}</td>
       </tr>`;
     });
     html+=`<tr class="tot-row">
       <td>TOTAL</td>
-      <td style="color:var(--green)">${fmt(totIng)}</td>
+      <td style="color:var(--green)">${fmt(totCob)}</td>
       <td style="color:var(--red)">${fmt(totEg)}</td>
-      <td style="color:${totBal>=0?'var(--green)':'var(--red)'}">${fmt(totBal)}</td>
-      <td>${fmt(totTornero)}</td><td>${fmt(totAy)}</td><td>${fmt(totSol)}</td>
-      <td>${fmt(totMat)}</td><td>${fmt(totHer)}</td><td>${fmt(totAdmin)}</td>
+      <td>${fmt(totTorn)}</td><td>${fmt(totSol)}</td><td>${fmt(totAy)}</td>
+      <td>${fmt(totMat)}</td><td>${fmt(totAdmin)}</td>
+      <td style="font-weight:700;color:${totBanco>=0?'var(--green)':'var(--red)'}">${fmt(totBanco)}</td>
     </tr>`;
     html+='</tbody></table></div>';
   } else {
-    // Detalle de un mes específico
+    // Detalle de un mes — BANCO destacado arriba
     const mvM=MV.filter(m=>(m.fecha||'').startsWith(filtro));
     const svM=SV.filter(s=>(s.fecha||'').startsWith(filtro));
-    const ing=mvM.filter(m=>m.tipo==='ingreso').reduce((a,m)=>a+m.monto,0);
-    const eg=mvM.filter(m=>m.tipo==='egreso').reduce((a,m)=>a+m.monto,0);
-    const tornero=svM.reduce((a,s)=>a+s.tornero,0);
-    const ay=svM.reduce((a,s)=>a+s.a,0);
+    const r=calcBanco(svM,mvM);
     const sol=svM.reduce((a,s)=>a+s.s,0);
-    const mat=svM.reduce((a,s)=>a+s.matC,0)+mvM.filter(m=>m.cat==='Materiales').reduce((a,m)=>a+m.monto,0);
-    const her=mvM.filter(m=>m.cat==='Herramientas').reduce((a,m)=>a+m.monto,0);
-    const admin=svM.reduce((a,s)=>a+s.admin,0)+mvM.filter(m=>m.cat==='Gastos administrativos').reduce((a,m)=>a+m.monto,0);
-    const alq=mvM.filter(m=>m.cat==='Alquiler').reduce((a,m)=>a+m.monto,0);
-    const elec=mvM.filter(m=>m.cat==='Electricidad').reduce((a,m)=>a+m.monto,0);
-    const compras=mvM.filter(m=>m.cat==='Compras').reduce((a,m)=>a+m.monto,0);
-    const bal=ing-eg;
-    const rl=(lbl,val,color='')=>val>0?`<div class="rl"><span>${lbl}</span><span style="${color?'color:'+color:''}">${fmt(val)}</span></div>`:'';
-    html=`<div class="highlight">
-      <div class="rl total"><span>Banco / Balance del mes</span><span style="color:${bal>=0?'var(--green)':'var(--red)'}">${fmt(bal)}</span></div>
-      ${rl('Ingresos del mes',''+ing,'var(--green)')}
-      ${rl('Egresos del mes',''+eg,'var(--red)')}
+    const ay=svM.reduce((a,s)=>a+s.a,0);
+    const rl=(lbl,val,col)=>val>0?`<div class="rl"><span>${lbl}</span><span style="color:${col||'inherit'}">${fmt(val)}</span></div>`:'';
+    html=`
+    <div class="highlight" style="border-left:3px solid var(--accent);margin-bottom:10px">
+      <div class="rl total"><span>🏦 BANCO DEL MES</span><span style="color:${r.banco>=0?'var(--green)':'var(--red)'};font-size:18px">${fmt(r.banco)}</span></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">Cobrado ${fmt(r.cobrado)} − Egresos ${fmt(r.egMV)} − Tornero ${fmt(r.tornero)}${sol>0?' − Soldador '+fmt(sol):''}${ay>0?' − Ayudante '+fmt(ay):''}</div>
     </div>
-    <div class="highlight" style="margin-top:10px">
-      <div style="font-size:11px;color:var(--text3);font-family:monospace;margin-bottom:8px;text-transform:uppercase">Mano de obra (Servicios)</div>
-      ${rl('Tornero (40%)',tornero)}
-      ${rl('Ayudante',ay)}
-      ${rl('Soldador',sol)}
-      ${rl('Material en servicios',mat)}
-      ${rl('Gastos admin en servicios (5%)',svM.reduce((a,s)=>a+s.admin,0))}
+    <div class="highlight" style="margin-top:8px">
+      <div style="font-size:11px;color:var(--text3);font-family:monospace;margin-bottom:6px;text-transform:uppercase">Entradas</div>
+      ${rl('Servicios cobrados',svM.reduce((a,s)=>a+(s.v||0),0),'var(--green)')}
+      ${rl('Facturas legales DGI',mvM.filter(m=>m.tipo==='ingreso'&&m.cat==='Factura legal').reduce((a,m)=>a+m.monto,0),'var(--green)')}
+      ${rl('Otros ingresos',mvM.filter(m=>m.tipo==='ingreso'&&m.cat!=='Factura legal').reduce((a,m)=>a+m.monto,0),'var(--green)')}
     </div>
-    <div class="highlight" style="margin-top:10px">
-      <div style="font-size:11px;color:var(--text3);font-family:monospace;margin-bottom:8px;text-transform:uppercase">Egresos por categoría</div>
-      ${rl('Compras (DGI)',compras)}
-      ${rl('Materiales',mvM.filter(m=>m.cat==='Materiales').reduce((a,m)=>a+m.monto,0))}
-      ${rl('Herramientas',her)}
-      ${rl('Alquiler',alq)}
-      ${rl('Electricidad',elec)}
-      ${rl('Gastos administrativos',mvM.filter(m=>m.cat==='Gastos administrativos').reduce((a,m)=>a+m.monto,0))}
-      ${rl('Internet',mvM.filter(m=>m.cat==='Internet').reduce((a,m)=>a+m.monto,0))}
-      ${rl('Cuota préstamo',mvM.filter(m=>m.cat==='Cuota préstamo').reduce((a,m)=>a+m.monto,0))}
-      ${rl('Otro',mvM.filter(m=>m.cat==='Otro'&&m.tipo==='egreso').reduce((a,m)=>a+m.monto,0))}
+    <div class="highlight" style="margin-top:8px">
+      <div style="font-size:11px;color:var(--text3);font-family:monospace;margin-bottom:6px;text-transform:uppercase">Mano de obra pagada</div>
+      ${rl('Tornero 40%',r.tornero)}${rl('Soldador',sol)}${rl('Ayudante',ay)}
+    </div>
+    <div class="highlight" style="margin-top:8px">
+      <div style="font-size:11px;color:var(--text3);font-family:monospace;margin-bottom:6px;text-transform:uppercase">Egresos pagados (se fueron del banco)</div>
+      ${rl('Compras / Materiales (DGI)',mvM.filter(m=>['Compras','Materiales'].includes(m.cat)).reduce((a,m)=>a+m.monto,0),'var(--red)')}
+      ${rl('Herramientas',mvM.filter(m=>m.cat==='Herramientas').reduce((a,m)=>a+m.monto,0),'var(--red)')}
+      ${rl('Alquiler',mvM.filter(m=>m.cat==='Alquiler').reduce((a,m)=>a+m.monto,0),'var(--red)')}
+      ${rl('Electricidad',mvM.filter(m=>m.cat==='Electricidad').reduce((a,m)=>a+m.monto,0),'var(--red)')}
+      ${rl('Sueldo fijo',mvM.filter(m=>m.cat==='Sueldo fijo').reduce((a,m)=>a+m.monto,0),'var(--red)')}
+      ${rl('Internet',mvM.filter(m=>m.cat==='Internet').reduce((a,m)=>a+m.monto,0),'var(--red)')}
+      ${rl('Cuota préstamo',mvM.filter(m=>m.cat==='Cuota préstamo').reduce((a,m)=>a+m.monto,0),'var(--red)')}
+      ${rl('Gastos admin',mvM.filter(m=>m.cat==='Gastos administrativos').reduce((a,m)=>a+m.monto,0),'var(--red)')}
+      ${rl('Otro',mvM.filter(m=>m.tipo==='egreso'&&m.cat==='Otro').reduce((a,m)=>a+m.monto,0),'var(--red)')}
     </div>`;
     if(svM.length){
-      html+=`<div class="highlight" style="margin-top:10px">
-        <div style="font-size:11px;color:var(--text3);font-family:monospace;margin-bottom:8px;text-transform:uppercase">Servicios (${svM.length})</div>
+      html+=`<div class="highlight" style="margin-top:8px">
+        <div style="font-size:11px;color:var(--text3);font-family:monospace;margin-bottom:6px;text-transform:uppercase">Servicios del mes (${svM.length})</div>
         ${svM.map(s=>`<div class="rl"><span style="font-size:12px">${s.desc}</span><span>${fmt(s.v)}</span></div>`).join('')}
       </div>`;
     }
@@ -1273,36 +1289,4 @@ function calcCierre(){
     <div class="rl total"><span>Total ingresos ${anio}</span><span>${fmt(totalIng)}</span></div>
     <div class="rl"><span>Total egresos</span><span style="color:var(--red)">${fmt(eg)}</span></div>
     <div class="rl total"><span>Utilidad bruta</span><span class="${util>=0?'gr':''}">${fmt(util)}</span></div>
-    <div class="rl"><span>ISR estimado (${(isr*100).toFixed(0)}%)</span><span style="color:var(--red)">${fmt(isrAmt)}</span></div>
-    <div class="rl total"><span>Utilidad neta estimada</span><span class="${neto>=0?'gr':''}">${fmt(neto)}</span></div>`;
-  const cats={};
-  am.forEach(m=>{if(!cats[m.cat])cats[m.cat]={ing:0,eg:0};cats[m.cat][m.tipo==='ingreso'?'ing':'eg']+=m.monto;});
-  const labels=Object.keys(cats);
-  document.getElementById('cierre-tabla').innerHTML=labels.length?
-    `<table><thead><tr><th>Categoría</th><th>Ingresos</th><th>Egresos</th><th>Neto</th></tr></thead><tbody>
-    ${labels.map(l=>{const n=cats[l].ing-cats[l].eg;return`<tr>
-      <td style="color:var(--text)">${l}</td>
-      <td style="font-family:'IBM Plex Mono',monospace;color:var(--green)">${cats[l].ing>0?fmt(cats[l].ing):'-'}</td>
-      <td style="font-family:'IBM Plex Mono',monospace;color:var(--red)">${cats[l].eg>0?fmt(cats[l].eg):'-'}</td>
-      <td style="font-family:'IBM Plex Mono',monospace;color:${n>=0?'var(--green)':'var(--red)'}">${fmt(n)}</td>
-    </tr>`}).join('')}</tbody></table>`
-    :`<div class="empty">// Sin datos para ${anio}</div>`;
-}
-
-// ── Init ──
-// Auto-set cotizacion number
-function setNextNums(){
-  const nextCot=CV.length?Math.max(...CV.map(c=>parseInt(c.num)||1000))+1:1001;
-  const nextRec=RB.length?Math.max(...RB.map(r=>parseInt(r.num)||1009))+1:1010;
-  document.getElementById('cot-num').value=nextCot;
-  document.getElementById('rec-num').value=nextRec;
-}
-
-// Add first empty item to cotizacion
-addItemCot();
-
-setInterval(cargarTodo,60000);
-cargarTodo();
-</script>
-</body>
-</html>
+    <div class="rl"><span>ISR estimado (${(isr*100).toFixed(0)}%)</span><span st
