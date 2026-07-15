@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tornería Mijares</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -465,11 +466,10 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 <!-- ═══════════════════ PRINT OVERLAY ═══════════════════ -->
 <div class="pov" id="print-overlay">
   <div class="pov-actions">
-    <button class="btn btn-primary" onclick="window.print()">🖨 PDF / Imprimir</button>
-    <button class="btn" style="background:#25D366;color:#fff;border-color:#25D366" onclick="compartirImagen()">📸 Imagen / WhatsApp</button>
+    <button class="btn btn-primary" onclick="descargarPDF(this)">📄 Descargar PDF</button>
+    <button class="btn" style="background:#25D366;color:#fff;border-color:#25D366" onclick="compartirImagen(this)">📸 Imagen / WhatsApp</button>
     <button class="btn" onclick="cerrarPrint()">✕ Cerrar</button>
   </div>
-  <p style="text-align:center;font-size:10px;color:#aaa;margin-bottom:8px">PDF: presiona el botón, luego selecciona "Guardar como PDF"</p>
   <div class="pdoc" id="print-doc"></div>
 </div>
 
@@ -1294,10 +1294,36 @@ function buildTextoWA(){
     return `*RECIBO DE COBRO N° ${d.num}*\n*${EMPRESA.nombre}*\n${EMPRESA.dir}\nTel: ${EMPRESA.tel}\n\n*Cliente:* ${d.cli||'—'}\n*Fecha:* ${d.fecha}\n\n*Concepto:* ${d.concepto||'Pago de servicios'}\n${d.totalProy?`*Total proyecto:* ${fmt(d.totalProy)}\n`:''}\n*✅ MONTO RECIBIDO: ${fmt(d.abono)}*\n${d.saldo>0?`*Saldo pendiente:* ${fmt(d.saldo)}`:'*Pago completo ✓*'}\n\n_${EMPRESA.ig} · ${EMPRESA.email}_`;
   }
 }
-async function compartirImagen(){
+async function descargarPDF(btn){
   const doc=document.getElementById('print-doc');
   if(!doc||!doc.innerHTML.trim()){alert('Abre la vista previa primero.');return}
-  const btn=event.target;btn.textContent='⏳ Generando...';btn.disabled=true;
+  btn.textContent='⏳ Generando...';btn.disabled=true;
+  try{
+    const canvas=await html2canvas(doc,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const imgW=210,imgH=(canvas.height*imgW)/canvas.width;
+    let pos=0;
+    if(imgH<=297){
+      pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,0,imgW,imgH);
+    } else {
+      let remaining=imgH;
+      while(remaining>0){
+        pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,pos,imgW,imgH);
+        remaining-=297;
+        if(remaining>0){pdf.addPage();pos-=297;}
+      }
+    }
+    const nombre=_previewTipo==='cot'?`Cotizacion-${_previewData?.num||''}.pdf`:`Recibo-${_previewData?.num||''}.pdf`;
+    pdf.save(nombre);
+  }catch(e){alert('Error al generar PDF: '+e.message);}
+  btn.textContent='📄 Descargar PDF';btn.disabled=false;
+}
+async function compartirImagen(btn){
+  const doc=document.getElementById('print-doc');
+  if(!doc||!doc.innerHTML.trim()){alert('Abre la vista previa primero.');return}
+  if(!btn)btn=document.querySelector('.pov-actions .btn:nth-child(2)');
+  btn.textContent='⏳ Generando...';btn.disabled=true;
   try{
     const canvas=await html2canvas(doc,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
     const nombre=_previewTipo==='cot'?`Cotizacion-${_previewData?.num||''}.png`:`Recibo-${_previewData?.num||''}.png`;
@@ -1312,7 +1338,7 @@ async function compartirImagen(){
       btn.textContent='📸 Imagen / WhatsApp';btn.disabled=false;
     },'image/png');
   }catch(e){
-    alert('Error al generar imagen. Usa "PDF / Imprimir" y guarda como PDF.');
+    alert('Error al generar imagen.');
     btn.textContent='📸 Imagen / WhatsApp';btn.disabled=false;
   }
 }
@@ -1343,30 +1369,4 @@ function calcCierre(){
   am.forEach(m=>{if(!cats[m.cat])cats[m.cat]={ing:0,eg:0};cats[m.cat][m.tipo==='ingreso'?'ing':'eg']+=m.monto;});
   const labels=Object.keys(cats);
   document.getElementById('cierre-tabla').innerHTML=labels.length?
-    `<table><thead><tr><th>Categoría</th><th>Ingresos</th><th>Egresos</th><th>Neto</th></tr></thead><tbody>
-    ${labels.map(l=>{const n=cats[l].ing-cats[l].eg;return`<tr>
-      <td style="color:var(--text)">${l}</td>
-      <td style="font-family:'IBM Plex Mono',monospace;color:var(--green)">${cats[l].ing>0?fmt(cats[l].ing):'-'}</td>
-      <td style="font-family:'IBM Plex Mono',monospace;color:var(--red)">${cats[l].eg>0?fmt(cats[l].eg):'-'}</td>
-      <td style="font-family:'IBM Plex Mono',monospace;color:${n>=0?'var(--green)':'var(--red)'}">${fmt(n)}</td>
-    </tr>`}).join('')}</tbody></table>`
-    :`<div class="empty">// Sin datos para ${anio}</div>`;
-}
-
-// ── Init ──
-// Auto-set cotizacion number
-function setNextNums(){
-  const nextCot=CV.length?Math.max(...CV.map(c=>parseInt(c.num)||1000))+1:1001;
-  const nextRec=RB.length?Math.max(...RB.map(r=>parseInt(r.num)||1009))+1:1010;
-  document.getElementById('cot-num').value=nextCot;
-  document.getElementById('rec-num').value=nextRec;
-}
-
-// Add first empty item to cotizacion
-addItemCot();
-
-setInterval(cargarTodo,60000);
-cargarTodo();
-</script>
-</body>
-</html>
+    `<table><thead><tr><th>Categoría</th><th>Ingresos</t
