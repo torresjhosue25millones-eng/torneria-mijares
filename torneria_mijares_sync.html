@@ -525,20 +525,34 @@ async function api(action,data){
   const r=await fetch(API+'?action='+action,{method:'POST',body:JSON.stringify(data)});
   return r.json();
 }
+function lsGet(k){try{return JSON.parse(localStorage.getItem(k)||'[]');}catch(e){return[];}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 async function loadData(){
+  // Carga inmediata desde localStorage (cotizaciones y recibos)
+  COT=lsGet('tm_cot');
+  REC=lsGet('tm_rec');
+  renderCotLista();renderRecLista();
   setSyncStatus('ing','⟳ Sincronizando...');
   try{
     const r=await fetch(API+'?action=getAll');
-    const d=await r.json();
-    SV=d.servicios||[];
-    MV=d.movimientos||[];
-    CLI=d.clientes||[];
-    COT=d.cotizaciones||[];
-    REC=d.recibos||[];
-    CTA=d.cuentas||[];
+    const text=await r.text();
+    let d;
+    try{d=JSON.parse(text);}catch(pe){
+      setSyncStatus('err','✗ Error formato API');
+      renderAll();return;
+    }
+    // Maneja diferentes estructuras posibles de respuesta
+    const root=d.data||d;
+    SV=root.servicios||root.Servicios||root.services||[];
+    MV=root.movimientos||root.Movimientos||root.movements||[];
+    CLI=root.clientes||root.Clientes||root.clients||[];
+    CTA=root.cuentas||root.Cuentas||[];
+    // Para COT y REC: usa API si tiene datos, sino localStorage
+    if((root.cotizaciones||[]).length)COT=root.cotizaciones;
+    if((root.recibos||[]).length)REC=root.recibos;
     poblarFiltros();
     renderAll();
-    setSyncStatus('ok','✓ Sincronizado');
+    setSyncStatus('ok','✓ Sync ('+SV.length+' serv, '+MV.length+' mov)');
   }catch(e){
     setSyncStatus('err','✗ Sin conexión');
     renderAll();
@@ -828,7 +842,8 @@ async function saveCotizacion(){
   const sub=items.reduce((a,i)=>a+i.t,0);
   const obj={id:uid(),num:document.getElementById('cot-num').value||'',fecha:document.getElementById('cot-fecha').value||today(),cli:document.getElementById('cot-cli').value||'',tel:document.getElementById('cot-tel').value||'',dir:document.getElementById('cot-dir').value||'',items,sub,tax,itbms:sub*tax,total:sub+sub*tax,notas:document.getElementById('cot-notas').value||''};
   COT.push(obj);
-  try{await api('saveCotizacion',obj);setSyncStatus('ok','✓ Guardado');}catch(e){setSyncStatus('err','✗ Sin conexión')}
+  lsSet('tm_cot',COT);
+  try{await api('saveCotizacion',obj);setSyncStatus('ok','✓ Guardado');}catch(e){setSyncStatus('err','⚠ Guardado local')}
   renderCotLista();alert('Cotización guardada');
 }
 function renderCotLista(){
@@ -855,13 +870,15 @@ function previewCotById(id){
 async function delCot(id){
   if(!confirm('¿Eliminar cotización?'))return;
   COT=COT.filter(x=>x.id!==id);
+  lsSet('tm_cot',COT);
   try{await api('deleteCotizacion',{id})}catch(e){}
   renderCotLista();
 }
 async function saveRecibo(){
   const obj={id:uid(),num:document.getElementById('rec-num').value||'',fecha:document.getElementById('rec-fecha').value||today(),cli:document.getElementById('rec-cli').value||'',tel:document.getElementById('rec-tel').value||'',dir:document.getElementById('rec-dir').value||'',sec:document.getElementById('rec-sec').value||'',concepto:document.getElementById('rec-concepto').value||'',total:+(document.getElementById('rec-total-proy').value)||0,abono:+(document.getElementById('rec-abono').value)||0,saldo:+(document.getElementById('rec-saldo').value)||0,obs:document.getElementById('rec-obs').value||''};
   REC.push(obj);
-  try{await api('saveRecibo',obj);setSyncStatus('ok','✓ Guardado');}catch(e){setSyncStatus('err','✗ Sin conexión')}
+  lsSet('tm_rec',REC);
+  try{await api('saveRecibo',obj);setSyncStatus('ok','✓ Guardado');}catch(e){setSyncStatus('err','⚠ Guardado local')}
   renderRecLista();alert('Recibo guardado');
 }
 function renderRecLista(){
@@ -888,6 +905,7 @@ function previewRecById(id){
 async function delRec(id){
   if(!confirm('¿Eliminar recibo?'))return;
   REC=REC.filter(x=>x.id!==id);
+  lsSet('tm_rec',REC);
   try{await api('deleteRecibo',{id})}catch(e){}
   renderRecLista();
 }
