@@ -195,9 +195,9 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 <div id="sec-cotizaciones" class="section">
   <div class="tab-sub">
     <button class="tsb active" onclick="showSubCot('sub-cot-form',this)">Nueva Cotización</button>
-    <button class="tsb" onclick="showSubCot('sub-cot-lista',this)">Guardadas</button>
+    <button class="tsb" onclick="showSubCot('sub-cot-lista',this)">Cotización Guardada</button>
     <button class="tsb" onclick="showSubCot('sub-rec-form',this)">Nuevo Recibo</button>
-    <button class="tsb" onclick="showSubCot('sub-rec-lista',this)">Recibos</button>
+    <button class="tsb" onclick="showSubCot('sub-rec-lista',this)">Recibo Guardado</button>
   </div>
   <div id="sub-cot-form" class="sub active">
     <div class="card">
@@ -335,7 +335,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
       </div>
       <div class="row2">
         <div><label>Categoría</label>
-          <select id="e-cat"><option>Materiales</option><option>Compras</option><option>Herramientas</option><option>Gastos administrativos</option><option>Alquiler</option><option>Electricidad</option><option>Internet</option><option>Sueldo fijo</option><option>Comisión 40%</option><option>Cuota préstamo</option><option>Representación</option><option>Mantenimiento</option><option>Otro</option></select>
+          <select id="e-cat"><option>Materiales</option><option>Compras</option><option>Herramientas</option><option>Gastos administrativos</option><option>Alquiler</option><option>Electricidad</option><option>Internet</option><option>Sueldo fijo</option><option>Comisión 40%</option><option>Soldador</option><option>Ayudante</option><option>Cuota préstamo</option><option>Representación</option><option>Mantenimiento</option><option>Otro</option></select>
         </div>
         <div><label>Estado</label>
           <select id="e-est"><option>Pagado Total</option><option>Pendiente</option><option>Abono parcial</option></select>
@@ -422,8 +422,9 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 
 <div class="pov" id="print-overlay">
   <div class="pov-actions">
-    <button class="btn btn-primary" onclick="descargarPDF(this)">📄 PDF / WhatsApp</button>
-    <button class="btn" style="background:#25D366;color:#fff;border-color:#25D366" onclick="compartirImagen(this)">📸 Imagen / WhatsApp</button>
+    <button class="btn btn-primary" onclick="descargarPDF(this)">📄 Descargar PDF</button>
+    <button class="btn" style="background:#25D366;color:#fff;border-color:#25D366" onclick="enviarWhatsAppPDF(this)">💬 WhatsApp PDF</button>
+    <button class="btn" style="background:#0088cc;color:#fff;border-color:#0088cc" onclick="compartirImagen(this)">📸 WhatsApp Imagen</button>
     <button class="btn" onclick="cerrarPrint()">✕ Cerrar</button>
   </div>
   <div class="pdoc" id="print-doc"></div>
@@ -485,10 +486,11 @@ function calcBanco(svArr,mvArr){
   const ingServ=mvArr.filter(m=>m.tipo==='ingreso'&&m.cat!==CAT_CAPITAL).reduce((a,m)=>a+m.monto,0);
   const torneroSV=svArr.reduce((a,s)=>a+(s.tornero||0),0);
   const tornero=torneroSV+ingServ*0.40;
-  const soldador=svArr.reduce((a,s)=>a+(s.s||0),0);
-  const ayudante=svArr.reduce((a,s)=>a+(s.a||0),0);
+  const soldador=svArr.reduce((a,s)=>a+(s.s||0),0)+mvArr.filter(m=>m.tipo==='egreso'&&m.cat==='Soldador').reduce((a,m)=>a+m.monto,0);
+  const ayudante=svArr.reduce((a,s)=>a+(s.a||0),0)+mvArr.filter(m=>m.tipo==='egreso'&&m.cat==='Ayudante').reduce((a,m)=>a+m.monto,0);
+  const sueldoFijo=mvArr.filter(m=>m.tipo==='egreso'&&m.cat==='Sueldo fijo').reduce((a,m)=>a+m.monto,0);
   const soldAy=soldador+ayudante;
-  return{cobrado:cobradoSV+ingMV,egMV,tornero,soldador,ayudante,soldAy,banco:cobradoSV+ingMV-egMV-tornero-soldAy};
+  return{cobrado:cobradoSV+ingMV,egMV,tornero,soldador,ayudante,sueldoFijo,soldAy,banco:cobradoSV+ingMV-egMV-tornero-soldAy};
 }
 
 function updMetrics(){
@@ -795,28 +797,43 @@ function numToLetras(n){
   return r.trim();
 }
 
-async function descargarPDF(btn){
+async function _genPDFCanvas(){
   const doc=document.getElementById('print-doc');
-  if(!doc||!doc.innerHTML.trim()){alert('Abre la vista previa primero.');return}
-  btn.textContent='⏳ Generando PDF...';btn.disabled=true;
+  if(!doc||!doc.innerHTML.trim())throw new Error('Abre la vista previa primero.');
+  const canvas=await html2canvas(doc,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
+  const{jsPDF}=window.jspdf;
+  const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const imgW=210,imgH=(canvas.height*imgW)/canvas.width;
+  if(imgH<=297){pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,0,imgW,imgH);}
+  else{let y=0;while(y<imgH){if(y>0)pdf.addPage();pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,-y,imgW,imgH);y+=297;}}
+  const nombre=_previewTipo==='cot'?`Cotizacion-${_previewData?.num||''}.pdf`:`Recibo-${_previewData?.num||''}.pdf`;
+  return{pdf,nombre};
+}
+async function descargarPDF(btn){
+  btn.textContent='⏳ Generando...';btn.disabled=true;
   try{
-    const canvas=await html2canvas(doc,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
-    const{jsPDF}=window.jspdf;
-    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const imgW=210,imgH=(canvas.height*imgW)/canvas.width;
-    if(imgH<=297){pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,0,imgW,imgH);}
-    else{let y=0;while(y<imgH){if(y>0)pdf.addPage();pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,-y,imgW,imgH);y+=297;}}
-    const nombre=_previewTipo==='cot'?`Cotizacion-${_previewData?.num||''}.pdf`:`Recibo-${_previewData?.num||''}.pdf`;
+    const{pdf,nombre}=await _genPDFCanvas();
+    pdf.save(nombre);
+  }catch(e){alert('Error: '+e.message);}
+  btn.textContent='📄 Descargar PDF';btn.disabled=false;
+}
+async function enviarWhatsAppPDF(btn){
+  btn.textContent='⏳ Preparando...';btn.disabled=true;
+  try{
+    const{pdf,nombre}=await _genPDFCanvas();
     const blob=pdf.output('blob');
     const file=new File([blob],nombre,{type:'application/pdf'});
     if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:nombre});
+      await navigator.share({files:[file],title:'Tornería Mijares — '+nombre});
     }else{
       pdf.save(nombre);
-      setTimeout(()=>alert('PDF guardado en Descargas.\nPara WhatsApp: abre el chat → 📎 → Documento → selecciona el PDF.'),400);
+      setTimeout(()=>{
+        alert('PDF guardado.\nPara enviarlo por WhatsApp:\n1. Abre WhatsApp\n2. Selecciona el chat\n3. Toca 📎 → Documento\n4. Busca el archivo descargado');
+        window.open('https://web.whatsapp.com/','_blank');
+      },500);
     }
-  }catch(e){alert('Error: '+e.message);}
-  btn.textContent='📄 PDF / WhatsApp';btn.disabled=false;
+  }catch(e){if(e.name!=='AbortError')alert('Error: '+e.message);}
+  btn.textContent='💬 WhatsApp PDF';btn.disabled=false;
 }
 async function compartirImagen(btn){
   const doc=document.getElementById('print-doc');
@@ -1053,15 +1070,15 @@ function renderReporte(){
   const meses=filtro?[filtro]:mesesEnDatos().slice().reverse();
   const el=document.getElementById('rep-content');
   if(!meses.length){el.innerHTML='<div class="empty">// Sin datos</div>';return}
-  let html='<div class="rep-wrap"><table class="rep-table"><thead><tr><th>Mes</th><th>Cobrado</th><th>👷 Tornero</th><th>🔧 Sold.</th><th>🤝 Ayud.</th><th>Egresos MV</th><th>🏦 Banco</th></tr></thead><tbody>';
-  let tots={cobrado:0,tornero:0,soldador:0,ayudante:0,eg:0,banco:0};
+  let html='<div class="rep-wrap"><table class="rep-table"><thead><tr><th>Mes</th><th>Cobrado</th><th>👷 Tornero 40%</th><th>🔧 Soldador</th><th>🤝 Ayudante</th><th>💼 Sueldo Fijo</th><th>Egresos</th><th>🏦 Banco</th></tr></thead><tbody>';
+  let tots={cobrado:0,tornero:0,soldador:0,ayudante:0,sueldoFijo:0,eg:0,banco:0};
   meses.forEach(ym=>{
     const sv=filtrarPorMes(SV,ym),mv=filtrarPorMes(MV,ym);
     const r=calcBanco(sv,mv);
-    tots.cobrado+=r.cobrado;tots.tornero+=r.tornero;tots.soldador+=r.soldador;tots.ayudante+=r.ayudante;tots.eg+=r.egMV;tots.banco+=r.banco;
-    html+=`<tr><td>${labelMes(ym)}</td><td>${fmt(r.cobrado)}</td><td style="color:var(--green)">${fmt(r.tornero)}</td><td>${fmt(r.soldador)}</td><td>${fmt(r.ayudante)}</td><td style="color:var(--red)">${fmt(r.egMV)}</td><td style="color:var(--accent);font-weight:600">${fmt(r.banco)}</td></tr>`;
+    tots.cobrado+=r.cobrado;tots.tornero+=r.tornero;tots.soldador+=r.soldador;tots.ayudante+=r.ayudante;tots.sueldoFijo+=r.sueldoFijo||0;tots.eg+=r.egMV;tots.banco+=r.banco;
+    html+=`<tr><td>${labelMes(ym)}</td><td>${fmt(r.cobrado)}</td><td style="color:var(--green)">${fmt(r.tornero)}</td><td>${fmt(r.soldador)}</td><td>${fmt(r.ayudante)}</td><td>${fmt(r.sueldoFijo||0)}</td><td style="color:var(--red)">${fmt(r.egMV)}</td><td style="color:var(--accent);font-weight:600">${fmt(r.banco)}</td></tr>`;
   });
-  html+=`<tr class="tot-row"><td>TOTAL</td><td>${fmt(tots.cobrado)}</td><td style="color:var(--green)">${fmt(tots.tornero)}</td><td>${fmt(tots.soldador)}</td><td>${fmt(tots.ayudante)}</td><td style="color:var(--red)">${fmt(tots.eg)}</td><td style="color:var(--accent);font-weight:600">${fmt(tots.banco)}</td></tr>`;
+  html+=`<tr class="tot-row"><td>TOTAL</td><td>${fmt(tots.cobrado)}</td><td style="color:var(--green)">${fmt(tots.tornero)}</td><td>${fmt(tots.soldador)}</td><td>${fmt(tots.ayudante)}</td><td>${fmt(tots.sueldoFijo)}</td><td style="color:var(--red)">${fmt(tots.eg)}</td><td style="color:var(--accent);font-weight:600">${fmt(tots.banco)}</td></tr>`;
   html+='</tbody></table></div>';
   el.innerHTML=html;
   const rcEl=document.getElementById('rep-cuentas');
@@ -1111,8 +1128,24 @@ function showSubCot(id,btn){
   if(btn)btn.classList.add('active');
 }
 
+const CLIENTES_INICIALES=[
+  {id:'cli-01',nombre:'ACETIOXIGENO, S.A.',ruc:'',email:'',tel:'',dir:'',sector:'Panamá'},
+  {id:'cli-02',nombre:'ADEMINSA CENTROAMERICANA, S.A.',ruc:'',email:'',tel:'',dir:'',sector:'Panamá'},
+  {id:'cli-03',nombre:'Aparicion y Cia',ruc:'',email:'',tel:'',dir:'',sector:'Panamá'},
+  {id:'cli-04',nombre:'COINSECA PANAMA, S.A.',ruc:'',email:'',tel:'',dir:'',sector:'Panamá'},
+  {id:'cli-05',nombre:'DEGRATELL, S.A.',ruc:'',email:'',tel:'',dir:'',sector:'Panamá'},
+  {id:'cli-06',nombre:'MANTENIMIENTOS URBANOS DE PANAMA, S.A.',ruc:'',email:'',tel:'',dir:'',sector:'Panamá'},
+  {id:'cli-07',nombre:'Maria Vidal Caceres',ruc:'',email:'',tel:'',dir:'',sector:'Panamá'},
+  {id:'cli-08',nombre:'SELCA, S.A.',ruc:'',email:'',tel:'',dir:'',sector:'Panamá'},
+  {id:'cli-09',nombre:'TRANSFORMADORES FOIS S.A.',ruc:'',email:'',tel:'',dir:'',sector:'Panamá'}
+];
+
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('header-logo').src=TM_LOGO;
+  // Pre-cargar clientes si no hay ninguno guardado
+  if(lsGet('tm_cli').length===0){
+    lsSet('tm_cli',CLIENTES_INICIALES);
+  }
   ['s-fecha','cot-fecha','rec-fecha','i-fecha','e-fecha','cta-fecha'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value=today();
   });
