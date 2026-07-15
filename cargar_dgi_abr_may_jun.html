@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Cargar DGI Abril-Mayo-Junio 2026</title>
+<style>
+  body{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:20px;background:#1a1a2e;color:#e0e0e0}
+  h2{color:#f0a500}
+  .log{background:#0f0f1a;border:1px solid #333;border-radius:8px;padding:15px;height:400px;overflow-y:auto;font-size:13px;font-family:monospace}
+  button{background:#f0a500;color:#000;border:none;padding:12px 28px;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:15px}
+  button:disabled{background:#555;color:#999;cursor:not-allowed}
+  .ok{color:#4caf50} .err{color:#f44336} .info{color:#90caf9}
+  #resumen{margin-top:15px;padding:12px;background:#0d2137;border-radius:8px;display:none}
+</style>
+</head>
+<body>
+<h2>Cargador DGI — Abril · Mayo · Junio 2026</h2>
+<p>Este archivo agrega <strong>35 facturas electrónicas</strong> de la DGI que faltan en la base de datos.<br>
+No duplica los registros que ya están cargados.</p>
+<button id="btn" onclick="cargar()">▶ Iniciar carga</button>
+<div class="log" id="log"></div>
+<div id="resumen"></div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbwwB1AQI3xY6wOh0GYUKy27jdcWg2keYf3YE-B45gVaMYCBiwrrmQ1NKgEgLwT3W6poZg/exec';
+
+const REGISTROS = [
+  {id:'dgi-2604-i01',tipo:'ingreso',fecha:'2026-04-30',concepto:'Factura a: DEGRATELL, S.A.',monto:489,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2604-i02',tipo:'ingreso',fecha:'2026-04-17',concepto:'Factura a: ACETIOXIGENO, S.A.',monto:960,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2604-i03',tipo:'ingreso',fecha:'2026-04-13',concepto:'Factura a: MANTENIMIENTOS URBANOS DE PANAMA, S.A.',monto:60,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2604-i04',tipo:'ingreso',fecha:'2026-04-09',concepto:'Factura a: MANTENIMIENTOS URBANOS DE PANAMA, S.A.',monto:30,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2604-i05',tipo:'ingreso',fecha:'2026-04-08',concepto:'Factura a: MANTENIMIENTOS URBANOS DE PANAMA, S.A.',monto:80,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2604-i06',tipo:'ingreso',fecha:'2026-04-08',concepto:'Factura a: TRANSFORMADORES FOIS S.A.',monto:320,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2604-e01',tipo:'egreso',fecha:'2026-04-29',concepto:'Factura de: FERRETERIAS GUTIERREZ, S.A.',monto:2.02,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2604-e02',tipo:'egreso',fecha:'2026-04-29',concepto:'Factura de: EUROCORTE PANAMA S.A.',monto:9.41,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2604-e03',tipo:'egreso',fecha:'2026-04-27',concepto:'Factura de: XPRESS TOOLS, INC.',monto:6.42,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2604-e04',tipo:'egreso',fecha:'2026-04-27',concepto:'Factura de: XPRESS TOOLS, INC.',monto:41.72,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2604-e05',tipo:'egreso',fecha:'2026-04-27',concepto:'Factura de: EMPRESAS CARBONE S.A.',monto:95.97,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2604-e06',tipo:'egreso',fecha:'2026-04-22',concepto:'Factura de: ACERO R&R SOLUCIONES, S.A.',monto:36.17,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2604-e07',tipo:'egreso',fecha:'2026-04-02',concepto:'Factura de: XPRESS TOOLS, INC.',monto:5.89,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2605-i01',tipo:'ingreso',fecha:'2026-05-26',concepto:'Factura a: MANTENIMIENTOS URBANOS DE PANAMA, S.A.',monto:485,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2605-i02',tipo:'ingreso',fecha:'2026-05-14',concepto:'Factura a: COINSECA PANAMA, S.A.',monto:380,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2605-i03',tipo:'ingreso',fecha:'2026-05-13',concepto:'Factura a: ADEMINSA CENTROAMERICANA S.A.',monto:180,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2605-i04',tipo:'ingreso',fecha:'2026-05-04',concepto:'Factura a: SELCA, S.A.',monto:360,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2605-e01',tipo:'egreso',fecha:'2026-05-25',concepto:'Factura de: FERRETERIAS GUTIERREZ, S.A.',monto:16.04,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2605-e02',tipo:'egreso',fecha:'2026-05-22',concepto:'Factura de: XPRESS TOOLS, INC.',monto:16.05,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2605-e03',tipo:'egreso',fecha:'2026-05-22',concepto:'Factura de: RAFAEL CHEUNG TSANG',monto:135.31,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2605-e04',tipo:'egreso',fecha:'2026-05-19',concepto:'Factura de: PANAROD S.A.',monto:25.19,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2605-e05',tipo:'egreso',fecha:'2026-05-15',concepto:'Factura de: PANAROD S.A.',monto:25.19,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2605-e06',tipo:'egreso',fecha:'2026-05-13',concepto:'Factura de: PETER QIU PAN',monto:12.79,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2605-e07',tipo:'egreso',fecha:'2026-05-08',concepto:'Factura de: EUROCORTE PANAMA S.A.',monto:5.67,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2605-e08',tipo:'egreso',fecha:'2026-05-06',concepto:'Factura de: XPRESS TOOLS, INC.',monto:7.22,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2605-e09',tipo:'egreso',fecha:'2026-05-06',concepto:'Factura de: XPRESS TOOLS, INC.',monto:2.41,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2605-e10',tipo:'egreso',fecha:'2026-05-04',concepto:'Factura de: PETER QIU PAN',monto:7.44,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2606-i01',tipo:'ingreso',fecha:'2026-06-25',concepto:'Factura a: ADEMINSA CENTROAMERICANA S.A.',monto:360,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2606-i02',tipo:'ingreso',fecha:'2026-06-22',concepto:'Factura a: SELCA, S.A.',monto:165,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2606-i03',tipo:'ingreso',fecha:'2026-06-22',concepto:'Factura a: ADEMINSA CENTROAMERICANA S.A.',monto:800,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2606-i04',tipo:'ingreso',fecha:'2026-06-08',concepto:'Factura a: TRANSFORMADORES FOIS S.A.',monto:30,cat:'Factura legal',estado:'Pagado Total'},
+  {id:'dgi-2606-e01',tipo:'egreso',fecha:'2026-06-15',concepto:'Factura de: EMPRESAS CARBONE S.A.',monto:63.08,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2606-e02',tipo:'egreso',fecha:'2026-06-12',concepto:'Factura de: EMPRESAS CARBONE S.A.',monto:48.03,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2606-e03',tipo:'egreso',fecha:'2026-06-10',concepto:'Factura de: PANAROD S.A.',monto:25.19,cat:'Compras',estado:'Pagado Total'},
+  {id:'dgi-2606-e04',tipo:'egreso',fecha:'2026-06-02',concepto:'Factura de: PANAROD S.A.',monto:25.19,cat:'Compras',estado:'Pagado Total'},
+];
+
+function log(msg,cls=''){const d=document.getElementById('log');d.innerHTML+=`<div class="${cls}">${msg}</div>`;d.scrollTop=d.scrollHeight;}
+
+async function postReg(reg){
+  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accion:'guardar',tabla:'movimientos',dato:reg})});
+  const j=await r.json();
+  if(j.ok) return true;
+  throw new Error(j.error||'Error');
+}
+
+async function cargar(){
+  document.getElementById('btn').disabled=true;
+  log('Iniciando carga de 35 registros DGI...','info');
+  log('─'.repeat(55));
+  let ok=0,err=0;
+  for(const reg of REGISTROS){
+    try{
+      await postReg(reg);
+      log(`✓ ${reg.fecha} | ${reg.tipo==='ingreso'?'INGRESO':'EGRESO'} | $${reg.monto} | ${reg.concepto.substring(0,45)}...`,'ok');
+      ok++;
+    }catch(e){
+      log(`✗ ${reg.fecha} | $${reg.monto} | ${e.message}`,'err');
+      err++;
+    }
+    await new Promise(r=>setTimeout(r,300));
+  }
+  log('─'.repeat(55));
+  log(`Carga completa: ${ok} cargados · ${err} errores`,'info');
+  const res=document.getElementById('resumen');
+  res.style.display='block';
+  res.innerHTML=`<strong>Resumen:</strong><br>Abril: 6 ing ($1,939) + 7 egr ($197.60)<br>Mayo: 4 ing ($1,405) + 10 egr ($253.31)<br>Junio: 4 ing ($1,355) + 4 egr ($161.49)<br><strong>Total: ${ok} registros agregados</strong>`;
+  document.getElementById('btn').disabled=false;
+}
+</script>
+</body>
+</html>
