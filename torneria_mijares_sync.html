@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -128,7 +128,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 </head>
 <body>
 <div class="header">
-  <div class="logo-badge">TM</div>
+  <img id="header-logo" alt="TM" style="width:42px;height:42px;object-fit:contain;border-radius:8px;flex-shrink:0">
   <div class="header-text"><h1>Tornería Mijares</h1><p>Servicios metalmecanicos · Panamá</p></div>
   <div class="sync-status sync-ing" id="sync-status">⟳ Cargando...</div>
 </div>
@@ -528,31 +528,36 @@ async function api(action,data){
 function lsGet(k){try{return JSON.parse(localStorage.getItem(k)||'[]');}catch(e){return[];}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 async function loadData(){
-  // Carga inmediata desde localStorage (cotizaciones y recibos)
+  // Carga inmediata desde localStorage
+  SV=lsGet('tm_sv');
   COT=lsGet('tm_cot');
   REC=lsGet('tm_rec');
+  CLI=lsGet('tm_cli');
+  CTA=lsGet('tm_cta');
   renderCotLista();renderRecLista();
   setSyncStatus('ing','⟳ Sincronizando...');
   try{
     const r=await fetch(API+'?action=getAll');
     const text=await r.text();
-    let d;
-    try{d=JSON.parse(text);}catch(pe){
-      setSyncStatus('err','✗ Error formato API');
-      renderAll();return;
-    }
-    // Maneja diferentes estructuras posibles de respuesta
-    const root=d.data||d;
-    SV=root.servicios||root.Servicios||root.services||[];
-    MV=root.movimientos||root.Movimientos||root.movements||[];
-    CLI=root.clientes||root.Clientes||root.clients||[];
-    CTA=root.cuentas||root.Cuentas||[];
-    // Para COT y REC: usa API si tiene datos, sino localStorage
-    if((root.cotizaciones||[]).length)COT=root.cotizaciones;
-    if((root.recibos||[]).length)REC=root.recibos;
+    const d=JSON.parse(text);
+    // La API devuelve {"datos":[[id,tipo,desc,monto,cat,cli_prov,fecha,est],...]}
+    const filas=d.datos||[];
+    MV=filas.map(row=>({
+      id:row[0],
+      tipo:row[1],
+      desc:row[2],
+      monto:+(row[3])||0,
+      cat:row[4],
+      cli:row[1]==='ingreso'?(row[5]||''):'',
+      prov:row[1]==='egreso'?(row[5]||''):'',
+      fecha:row[6]||'',
+      est:row[7]||''
+    }));
     poblarFiltros();
     renderAll();
-    setSyncStatus('ok','✓ Sync ('+SV.length+' serv, '+MV.length+' mov)');
+    const nI=MV.filter(m=>m.tipo==='ingreso').length;
+    const nE=MV.filter(m=>m.tipo==='egreso').length;
+    setSyncStatus('ok','✓ Sync ('+nI+' ing, '+nE+' eg)');
   }catch(e){
     setSyncStatus('err','✗ Sin conexión');
     renderAll();
@@ -623,7 +628,7 @@ async function saveServicio(){
   const tornero=(v-matR)*0.40;
   const obj={id:uid(),desc,v,fecha,mat:matR,tornero,s:sol,a:ay,otro:ot};
   SV.push(obj);
-  try{await api('saveServicio',obj);setSyncStatus('ok','✓ Guardado');}catch(e){setSyncStatus('err','✗ Sin conexión')}
+  lsSet('tm_sv',SV);
   poblarFiltros();updMetrics();renderSV();
   ['s-desc','s-monto','s-mat','s-sol','s-ay','s-ot'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('s-prev').style.display='none';
@@ -631,7 +636,7 @@ async function saveServicio(){
 async function delS(id){
   if(!confirm('¿Eliminar servicio?'))return;
   SV=SV.filter(s=>s.id!==id);
-  try{await api('deleteServicio',{id})}catch(e){}
+  lsSet('tm_sv',SV);
   updMetrics();renderSV();
 }
 
@@ -977,7 +982,7 @@ async function saveCliente(){
   if(!nombre){alert('Ingresa el nombre del cliente');return}
   const obj={id:uid(),nombre,ruc:document.getElementById('cl-ruc').value,email:document.getElementById('cl-email').value,tel:document.getElementById('cl-tel').value,dir:document.getElementById('cl-dir').value,sector:document.getElementById('cl-sector').value};
   CLI.push(obj);
-  try{await api('saveCliente',obj);setSyncStatus('ok','✓ Guardado');}catch(e){setSyncStatus('err','✗ Sin conexión')}
+  lsSet('tm_cli',CLI);
   renderCL();poblarSelCli();
   ['cl-nombre','cl-ruc','cl-email','cl-tel','cl-dir','cl-sector'].forEach(id=>{document.getElementById(id).value='';});
 }
@@ -995,7 +1000,7 @@ function renderCL(){
 async function delCL(id){
   if(!confirm('¿Eliminar cliente?'))return;
   CLI=CLI.filter(c=>c.id!==id);
-  try{await api('deleteCliente',{id})}catch(e){}
+  lsSet('tm_cli',CLI);
   renderCL();poblarSelCli();
 }
 function poblarSelCli(){
@@ -1019,7 +1024,7 @@ async function saveCuenta(){
   const obj={id:uid(),tipo:document.getElementById('cta-tipo').value,empresa,concepto:document.getElementById('cta-concepto').value,montoTotal:+(document.getElementById('cta-monto-total').value)||0,pagado:+(document.getElementById('cta-pagado').value)||0,fecha:document.getElementById('cta-fecha').value||today()};
   obj.pendiente=obj.montoTotal-obj.pagado;
   CTA.push(obj);
-  try{await api('saveCuenta',obj);setSyncStatus('ok','✓ Guardado');}catch(e){setSyncStatus('err','✗ Sin conexión')}
+  lsSet('tm_cta',CTA);
   renderCuentas();
   ['cta-empresa','cta-concepto','cta-monto-total','cta-pagado'].forEach(id=>{document.getElementById(id).value='';});
 }
@@ -1039,7 +1044,7 @@ function renderCuentas(){
 async function delCTA(id){
   if(!confirm('¿Eliminar cuenta?'))return;
   CTA=CTA.filter(c=>c.id!==id);
-  try{await api('deleteCuenta',{id})}catch(e){}
+  lsSet('tm_cta',CTA);
   renderCuentas();
 }
 
@@ -1107,6 +1112,7 @@ function showSubCot(id,btn){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('header-logo').src=TM_LOGO;
   ['s-fecha','cot-fecha','rec-fecha','i-fecha','e-fecha','cta-fecha'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value=today();
   });
