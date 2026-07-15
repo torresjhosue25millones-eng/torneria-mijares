@@ -1,5 +1,7 @@
-<!DOCTYPE html>
-<html lang="es">
+!DOCTYPE html>
+
+<html lang="es"><!DOCTYPE html>
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -94,7 +96,9 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .pdoc{background:#fff;color:#222;width:100%;max-width:650px;font-family:Arial,sans-serif;font-size:12px;line-height:1.4}
 /* Document header */
 .dh{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#dbeafe;border-bottom:2px solid #1e3a5f}
-.dh-logo{width:64px;height:64px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#1e3a5f;border-radius:50%;border:3px solid #1e3a5f}
+.dh-logo{width:80px;height:80px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:transparent;border-radius:50%}
+.pdoc td,.pdoc th{color:#222!important}
+.pdoc th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#555!important}
 .dh-info{flex:1}
 .dh-info h1{font-size:20px;font-weight:900;color:#1e3a5f;letter-spacing:1px;text-transform:uppercase}
 .dh-info p{font-size:10px;color:#555;margin-top:1px}
@@ -194,14 +198,14 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
       </div>
       <label>Cliente</label>
       <select id="cot-cli-sel" onchange="autoFillCli('cot')"><option value="">— Seleccionar cliente guardado —</option></select>
-      <div class="row2" style="margin-top:8px">
-        <div><label>Nombre / Empresa</label><input type="text" id="cot-cli" placeholder="Nombre del cliente"></div>
-        <div><label>RUC / Cédula</label><input type="text" id="cot-ruc" placeholder="13-NT-X-XXXXXX"></div>
+      <div style="margin-top:8px">
+        <label>Nombre / Empresa</label><input type="text" id="cot-cli" placeholder="Nombre del cliente">
       </div>
       <div class="row2">
         <div><label>Teléfono</label><input type="text" id="cot-tel" placeholder="+507 XXXX-XXXX"></div>
         <div><label>Dirección / Sector</label><input type="text" id="cot-dir" placeholder="Ciudad, Panamá"></div>
       </div>
+      <input type="hidden" id="cot-ruc" value="">
     </div>
     <div class="card">
       <div class="card-title"><span class="dot"></span>Ítems / Descripción</div>
@@ -221,8 +225,8 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
       </div>
       <label>¿Aplica ITBMS?</label>
       <select id="cot-tax" onchange="calcCot()"><option value="0">Sin impuesto</option><option value="0.07">ITBMS 7%</option></select>
-      <label>Notas / Términos adicionales</label>
-      <textarea id="cot-notas" rows="2" placeholder="Tiempo de entrega, forma de pago, validez..."></textarea>
+      <label>Descripción del trabajo / Notas adicionales</label>
+      <textarea id="cot-notas" rows="5" placeholder="Descripción detallada del trabajo, tiempo de entrega, forma de pago, validez de la cotización..."></textarea>
       <div class="flex-end">
         <button class="btn" onclick="calcCot()">🧮 Calcular</button>
         <button class="btn" onclick="previewDoc('cot')">👁 Vista previa</button>
@@ -462,9 +466,12 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 <!-- ═══════════════════ PRINT OVERLAY ═══════════════════ -->
 <div class="pov" id="print-overlay">
   <div class="pov-actions">
-    <button class="btn btn-primary" onclick="window.print()">🖨 Imprimir</button>
+    <button class="btn btn-primary" onclick="window.print()">🖨 PDF / Imprimir</button>
+    <button class="btn" style="background:#25D366;color:#fff;border-color:#25D366" onclick="compartirWhatsApp()">💬 WhatsApp</button>
+    <button class="btn" onclick="compartirDoc()">📤 Compartir</button>
     <button class="btn" onclick="cerrarPrint()">✕ Cerrar</button>
   </div>
+  <p style="text-align:center;font-size:10px;color:#aaa;margin-bottom:8px">PDF: presiona el botón, luego selecciona "Guardar como PDF"</p>
   <div class="pdoc" id="print-doc"></div>
 </div>
 
@@ -713,9 +720,10 @@ function calcBanco(svArr, mvArr){
   return {cobrado:cobradoSV+ingMV, egMV, tornero, soldAy, banco:cobradoSV+ingMV-egMV-tornero-soldAy};
 }
 function updMetrics(){
-  const now=new Date();const mes=now.getMonth();const yr=now.getFullYear();
-  const dm=SV.filter(s=>{const d=new Date(s.fecha+' 12:00');return d.getMonth()===mes&&d.getFullYear()===yr});
-  const mvMes=MV.filter(m=>{const d=new Date(m.fecha+' 12:00');return d.getMonth()===mes&&d.getFullYear()===yr;});
+  const now=new Date();
+  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const dm=filtrarPorMes(SV,ym);
+  const mvMes=filtrarPorMes(MV,ym);
   const r=calcBanco(dm,mvMes);
   document.getElementById('m-mes').textContent=fmt(r.cobrado);
   document.getElementById('m-torn').textContent=fmt(r.tornero);
@@ -1132,12 +1140,18 @@ async function delRb(id){
 }
 
 // ── Print / Preview ──
-const TM_LOGO = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="64" height="64">
-  <circle cx="50" cy="50" r="46" fill="#1e3a5f"/>
-  <circle cx="50" cy="50" r="38" fill="none" stroke="#63b3ed" stroke-width="4" stroke-dasharray="8 4"/>
-  <text x="50" y="42" text-anchor="middle" fill="#63b3ed" font-family="Arial" font-size="11" font-weight="bold">TORNERIA</text>
-  <text x="50" y="63" text-anchor="middle" fill="white" font-family="Arial Black,Arial" font-size="26" font-weight="900">TM</text>
-  <text x="50" y="76" text-anchor="middle" fill="#63b3ed" font-family="Arial" font-size="10" font-weight="bold">MIJARES</text>
+const TM_LOGO = `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" width="80" height="80">
+  <circle cx="60" cy="60" r="57" fill="white"/>
+  <circle cx="60" cy="60" r="57" fill="none" stroke="#111" stroke-width="5"/>
+  <circle cx="60" cy="60" r="51" fill="#1a1a1a"/>
+  <circle cx="60" cy="60" r="57" fill="none" stroke="#111" stroke-width="4" stroke-dasharray="9 5" stroke-dashoffset="4"/>
+  <text x="18" y="84" font-family="Arial Black,Arial" font-size="66" font-weight="900" fill="#29b5e8" opacity="0.95">T</text>
+  <text x="54" y="84" font-family="Arial Black,Arial" font-size="66" font-weight="900" fill="#29b5e8" opacity="0.85">M</text>
+  <rect x="4" y="86" width="112" height="18" fill="#1a1a1a" rx="2"/>
+  <text x="60" y="98" text-anchor="middle" font-family="Arial" font-size="8.5" font-weight="bold" fill="white" letter-spacing="0.8">TORNERIA MIJARES</text>
+  <line x1="88" y1="28" x2="112" y2="52" stroke="#aaa" stroke-width="4" stroke-linecap="round"/>
+  <line x1="88" y1="28" x2="112" y2="28" stroke="#aaa" stroke-width="3" stroke-linecap="round"/>
+  <line x1="112" y1="28" x2="112" y2="52" stroke="#aaa" stroke-width="3" stroke-linecap="round"/>
 </svg>`;
 
 function docHeader(titulo, num, numLabel){
@@ -1245,20 +1259,21 @@ function buildRecHtml(rb){
   </div>`;
 }
 
+let _previewTipo='cot', _previewData=null;
+
 function previewDoc(tipo){
   let html='';
   if(tipo==='cot'){
     const items=getCotItems();
     calcCot();
-    const sub=items.reduce((a,i)=>a+i.tot,0);
     const tax=parseFloat(document.getElementById('cot-tax').value)||0;
     const num=document.getElementById('cot-num').value||'---';
     const cot={num,cli:document.getElementById('cot-cli').value,ruc:document.getElementById('cot-ruc').value,tel:document.getElementById('cot-tel').value,dir:document.getElementById('cot-dir').value,items,notas:document.getElementById('cot-notas').value,fecha:document.getElementById('cot-fecha').value,tax};
-    html=buildCotHtml(cot);
+    _previewTipo='cot'; _previewData=cot; html=buildCotHtml(cot);
   }else{
     calcRec();
     const rb={num:document.getElementById('rec-num').value||'---',cli:document.getElementById('rec-cli').value,tel:document.getElementById('rec-tel').value,dir:document.getElementById('rec-dir').value,sec:document.getElementById('rec-sec').value,concepto:document.getElementById('rec-concepto').value,totalProy:parseFloat(document.getElementById('rec-total-proy').value)||0,abono:parseFloat(document.getElementById('rec-abono').value)||0,saldo:parseFloat(document.getElementById('rec-saldo').value)||0,obs:document.getElementById('rec-obs').value,fecha:document.getElementById('rec-fecha').value};
-    html=buildRecHtml(rb);
+    _previewTipo='rec'; _previewData=rb; html=buildRecHtml(rb);
   }
   document.getElementById('print-doc').innerHTML=html;
   document.getElementById('print-overlay').classList.add('active');
@@ -1268,16 +1283,46 @@ function previewDocById(tipo,id){
   if(tipo==='cot'){
     const c=CV.find(x=>String(x.id)===String(id));
     if(!c)return;
+    _previewTipo='cot'; _previewData=c;
     document.getElementById('print-doc').innerHTML=buildCotHtml(c);
   }else{
     const r=RB.find(x=>String(x.id)===String(id));
     if(!r)return;
+    _previewTipo='rec'; _previewData=r;
     document.getElementById('print-doc').innerHTML=buildRecHtml(r);
   }
   document.getElementById('print-overlay').classList.add('active');
   document.getElementById('print-overlay').scrollTop=0;
 }
 function cerrarPrint(){document.getElementById('print-overlay').classList.remove('active');}
+
+function buildTextoWA(){
+  if(!_previewData)return '';
+  const d=_previewData;
+  if(_previewTipo==='cot'){
+    const items=(d.items||[]).map(i=>`  • ${i.desc} (x${i.cant}) — ${fmt(i.tot)}`).join('\n');
+    const sub=(d.items||[]).reduce((a,i)=>a+i.tot,0);
+    const itbms=sub*(d.tax||0);
+    return `*COTIZACIÓN N° ${d.num}*\n*${EMPRESA.nombre}*\n${EMPRESA.dir}\nTel: ${EMPRESA.tel}\nRUC: ${EMPRESA.ruc}\n\n*Cliente:* ${d.cli||'—'}\n*Fecha:* ${d.fecha}\n\n*Descripción:*\n${items}\n\n*Subtotal:* ${fmt(sub)}${d.tax>0?`\n*ITBMS 7%:* ${fmt(itbms)}`:''}${d.tax>0?`\n*TOTAL: ${fmt(sub+itbms)}*`:`\n*TOTAL: ${fmt(sub)}*`}\n\n${d.notas||'Pago: 50% al ordenar, 50% contra entrega.\nValidez: 15 días.'}\n\n_${EMPRESA.ig} · ${EMPRESA.email}_`;
+  } else {
+    return `*RECIBO DE COBRO N° ${d.num}*\n*${EMPRESA.nombre}*\n${EMPRESA.dir}\nTel: ${EMPRESA.tel}\n\n*Cliente:* ${d.cli||'—'}\n*Fecha:* ${d.fecha}\n\n*Concepto:* ${d.concepto||'Pago de servicios'}\n${d.totalProy?`*Total proyecto:* ${fmt(d.totalProy)}\n`:''}\n*✅ MONTO RECIBIDO: ${fmt(d.abono)}*\n${d.saldo>0?`*Saldo pendiente:* ${fmt(d.saldo)}`:'*Pago completo ✓*'}\n\n_${EMPRESA.ig} · ${EMPRESA.email}_`;
+  }
+}
+function compartirWhatsApp(){
+  const txt=buildTextoWA();
+  if(!txt){alert('Abre la vista previa primero.');return}
+  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+}
+async function compartirDoc(){
+  const txt=buildTextoWA();
+  if(!txt){alert('Abre la vista previa primero.');return}
+  if(navigator.share){
+    try{await navigator.share({title:_previewTipo==='cot'?'Cotización Tornería Mijares':'Recibo Tornería Mijares',text:txt});}
+    catch(e){}
+  } else {
+    navigator.clipboard.writeText(txt).then(()=>alert('Texto copiado al portapapeles. Pégalo en WhatsApp o email.'));
+  }
+}
 
 // ── Cierre anual ──
 function calcCierre(){
