@@ -65,7 +65,12 @@ const REGISTROS = [
 function log(msg,cls=''){const d=document.getElementById('log');d.innerHTML+=`<div class="${cls}">${msg}</div>`;d.scrollTop=d.scrollHeight;}
 
 async function postReg(reg){
-  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accion:'guardar',tabla:'movimientos',dato:reg})});
+  const prov=reg.concepto.replace(/^Factura (a|de): /,'');
+  const fila=[reg.id,reg.tipo,reg.concepto,reg.monto,reg.cat,prov,reg.fecha,reg.estado];
+  const r=await fetch(API,{
+    method:'POST',
+    body:JSON.stringify({accion:'guardar',tabla:'movimientos',fila:fila,dato:reg})
+  });
   const j=await r.json();
   if(j.ok) return true;
   throw new Error(j.error||'Error');
