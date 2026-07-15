@@ -1369,4 +1369,30 @@ function calcCierre(){
   am.forEach(m=>{if(!cats[m.cat])cats[m.cat]={ing:0,eg:0};cats[m.cat][m.tipo==='ingreso'?'ing':'eg']+=m.monto;});
   const labels=Object.keys(cats);
   document.getElementById('cierre-tabla').innerHTML=labels.length?
-    `<table><thead><tr><th>Categoría</th><th>Ingresos</t
+    `<table><thead><tr><th>Categoría</th><th>Ingresos</th><th>Egresos</th><th>Neto</th></tr></thead><tbody>
+    ${labels.map(l=>{const n=cats[l].ing-cats[l].eg;return`<tr>
+      <td style="color:var(--text)">${l}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--green)">${cats[l].ing>0?fmt(cats[l].ing):'-'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--red)">${cats[l].eg>0?fmt(cats[l].eg):'-'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:${n>=0?'var(--green)':'var(--red)'}">${fmt(n)}</td>
+    </tr>`}).join('')}</tbody></table>`
+    :`<div class="empty">// Sin datos para ${anio}</div>`;
+}
+
+// ── Init ──
+// Auto-set cotizacion number
+function setNextNums(){
+  const nextCot=CV.length?Math.max(...CV.map(c=>parseInt(c.num)||1000))+1:1001;
+  const nextRec=RB.length?Math.max(...RB.map(r=>parseInt(r.num)||1009))+1:1010;
+  document.getElementById('cot-num').value=nextCot;
+  document.getElementById('rec-num').value=nextRec;
+}
+
+// Add first empty item to cotizacion
+addItemCot();
+
+setInterval(cargarTodo,60000);
+cargarTodo();
+</script>
+</body>
+</html>
