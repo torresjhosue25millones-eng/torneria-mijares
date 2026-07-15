@@ -466,7 +466,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 <!-- ═══════════════════ PRINT OVERLAY ═══════════════════ -->
 <div class="pov" id="print-overlay">
   <div class="pov-actions">
-    <button class="btn btn-primary" onclick="descargarPDF(this)">📄 Descargar PDF</button>
+    <button class="btn btn-primary" onclick="descargarPDF(this)">📄 PDF / WhatsApp</button>
     <button class="btn" style="background:#25D366;color:#fff;border-color:#25D366" onclick="compartirImagen(this)">📸 Imagen / WhatsApp</button>
     <button class="btn" onclick="cerrarPrint()">✕ Cerrar</button>
   </div>
@@ -1297,27 +1297,33 @@ function buildTextoWA(){
 async function descargarPDF(btn){
   const doc=document.getElementById('print-doc');
   if(!doc||!doc.innerHTML.trim()){alert('Abre la vista previa primero.');return}
-  btn.textContent='⏳ Generando...';btn.disabled=true;
+  btn.textContent='⏳ Generando PDF...';btn.disabled=true;
   try{
     const canvas=await html2canvas(doc,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const imgW=210,imgH=(canvas.height*imgW)/canvas.width;
-    let pos=0;
     if(imgH<=297){
       pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,0,imgW,imgH);
     } else {
-      let remaining=imgH;
-      while(remaining>0){
-        pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,pos,imgW,imgH);
-        remaining-=297;
-        if(remaining>0){pdf.addPage();pos-=297;}
+      let yOffset=0,pageH=297;
+      while(yOffset<imgH){
+        if(yOffset>0)pdf.addPage();
+        pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,-yOffset,imgW,imgH);
+        yOffset+=pageH;
       }
     }
     const nombre=_previewTipo==='cot'?`Cotizacion-${_previewData?.num||''}.pdf`:`Recibo-${_previewData?.num||''}.pdf`;
-    pdf.save(nombre);
-  }catch(e){alert('Error al generar PDF: '+e.message);}
-  btn.textContent='📄 Descargar PDF';btn.disabled=false;
+    const pdfBlob=pdf.output('blob');
+    const pdfFile=new File([pdfBlob],nombre,{type:'application/pdf'});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[pdfFile]})){
+      await navigator.share({files:[pdfFile],title:nombre});
+    } else {
+      pdf.save(nombre);
+      setTimeout(()=>alert('PDF guardado en Descargas.\nAbre WhatsApp → contacto → 📎 adjuntar → Documentos → selecciona el PDF.'),500);
+    }
+  }catch(e){alert('Error: '+e.message);}
+  btn.textContent='📄 PDF / WhatsApp';btn.disabled=false;
 }
 async function compartirImagen(btn){
   const doc=document.getElementById('print-doc');
