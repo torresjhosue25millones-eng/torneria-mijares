@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tornería Mijares</title>
+<meta name="theme-color" content="#1e293b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TM Conta">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -173,11 +180,11 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     </div>
     <label>Material comprado ($) — 0 = estimado 10%</label>
     <input type="number" id="s-mat" placeholder="0.00" value="0" oninput="calcS()">
-    <label>Mano de obra adicional</label>
+    <label>Mano de obra adicional <span style="font-size:10px;color:var(--text3)">(dejar vacío si no aplica)</span></label>
     <div class="row3">
-      <div><label style="margin-top:0">Soldador ($)</label><input type="number" id="s-sol" value="0" oninput="calcS()"></div>
-      <div><label style="margin-top:0">Ayudante ($)</label><input type="number" id="s-ay" value="0" oninput="calcS()"></div>
-      <div><label style="margin-top:0">Otro ($)</label><input type="number" id="s-ot" value="0" oninput="calcS()"></div>
+      <div><label style="margin-top:0">🔧 Soldador ($)</label><input type="number" id="s-sol" placeholder="0.00" oninput="calcS()" onchange="calcS()"></div>
+      <div><label style="margin-top:0">🤝 Ayudante ($)</label><input type="number" id="s-ay" placeholder="0.00" oninput="calcS()" onchange="calcS()"></div>
+      <div><label style="margin-top:0">Otro ($)</label><input type="number" id="s-ot" placeholder="0.00" oninput="calcS()" onchange="calcS()"></div>
     </div>
     <div class="highlight" id="s-prev" style="display:none"><div id="s-prev-l"></div></div>
     <div class="flex-end"><button class="btn btn-primary" onclick="saveServicio()">💾 Guardar servicio</button></div>
@@ -235,7 +242,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
       <label>¿Aplica ITBMS?</label>
       <select id="cot-tax" onchange="calcCot()"><option value="0">Sin impuesto</option><option value="0.07">ITBMS 7%</option></select>
       <label>Descripción del trabajo / Notas adicionales</label>
-      <textarea id="cot-notas" rows="5" placeholder="Descripción detallada del trabajo, tiempo de entrega, forma de pago, validez..."></textarea>
+      <textarea id="cot-notas" rows="10" style="min-height:220px;resize:vertical" placeholder="Descripción detallada del trabajo, tiempo de entrega, forma de pago, validez..."></textarea>
       <div class="flex-end">
         <button class="btn" onclick="calcCot()">🧮 Calcular</button>
         <button class="btn" onclick="previewDoc('cot')">👁 Vista previa</button>
@@ -548,6 +555,8 @@ async function loadData(){
   CLI=lsGet('tm_cli');
   CTA=lsGet('tm_cta');
   renderCotLista();renderRecLista();
+  document.getElementById('cot-num').value=nextNum(COT);
+  document.getElementById('rec-num').value=nextNum(REC);
   setSyncStatus('ing','⟳ Sincronizando...');
   try{
     const r=await fetch(API+'?action=getAll');
@@ -657,9 +666,9 @@ function addItemCot(){
   const c=document.getElementById('cot-items');
   const d=document.createElement('div');d.className='item-row';
   d.innerHTML=`<input type="text" placeholder="Descripción del ítem" oninput="calcCot()">
-    <input type="number" value="1" min="1" placeholder="1" oninput="calcCot()">
-    <input type="number" value="0" placeholder="0.00" oninput="calcCot()">
-    <input type="number" value="0" readonly style="color:var(--text3)">
+    <input type="number" value="1" min="1" placeholder="1" oninput="calcCot()" onchange="calcCot()">
+    <input type="number" value="" placeholder="0.00" oninput="calcCot()" onchange="calcCot()">
+    <span class="item-ttl" style="font-size:12px;text-align:right;color:var(--text);font-family:'IBM Plex Mono',monospace;padding:4px 2px;font-weight:600">$0.00</span>
     <button class="btn btn-danger" onclick="this.parentElement.remove();calcCot()">✕</button>`;
   c.appendChild(d);calcCot();
 }
@@ -669,7 +678,9 @@ function calcCot(){
   rows.forEach(r=>{
     const inps=r.querySelectorAll('input[type=number]');
     const q=+inps[0].value||0,p=+inps[1].value||0,t=q*p;
-    inps[2].value=t.toFixed(2);sub+=t;
+    const ttl=r.querySelector('.item-ttl');
+    if(ttl)ttl.textContent='$'+t.toFixed(2);
+    sub+=t;
   });
   const tax=+document.getElementById('cot-tax').value||0;
   const itbms=sub*tax;
@@ -877,7 +888,9 @@ async function saveCotizacion(){
   COT.push(obj);
   lsSet('tm_cot',COT);
   try{await api('saveCotizacion',obj);setSyncStatus('ok','✓ Guardado');}catch(e){setSyncStatus('err','⚠ Guardado local')}
-  renderCotLista();alert('Cotización guardada');
+  renderCotLista();
+  document.getElementById('cot-num').value=nextNum(COT);
+  alert('Cotización guardada');
 }
 function renderCotLista(){
   const el=document.getElementById('t-cotizaciones');
@@ -912,7 +925,9 @@ async function saveRecibo(){
   REC.push(obj);
   lsSet('tm_rec',REC);
   try{await api('saveRecibo',obj);setSyncStatus('ok','✓ Guardado');}catch(e){setSyncStatus('err','⚠ Guardado local')}
-  renderRecLista();alert('Recibo guardado');
+  renderRecLista();
+  document.getElementById('rec-num').value=nextNum(REC);
+  alert('Recibo guardado');
 }
 function renderRecLista(){
   const el=document.getElementById('t-recibos');
@@ -1138,11 +1153,17 @@ function showSub(id,btn){
   el.classList.add('active');
   if(btn)btn.classList.add('active');
 }
+function nextNum(arr){
+  const nums=arr.map(x=>+x.num).filter(n=>n>0);
+  return nums.length?Math.max(...nums)+1:1001;
+}
 function showSubCot(id,btn){
   document.querySelectorAll('#sec-cotizaciones .sub').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('#sec-cotizaciones .tsb').forEach(b=>b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if(btn)btn.classList.add('active');
+  if(id==='sub-cot-form')document.getElementById('cot-num').value=nextNum(COT);
+  if(id==='sub-rec-form')document.getElementById('rec-num').value=nextNum(REC);
 }
 
 const CLIENTES_INICIALES=[
@@ -1168,6 +1189,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
   addItemCot();
   loadData();
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('/torneria-mijares/sw.js').catch(()=>{});
+  }
 });
 </script>
 </body>
