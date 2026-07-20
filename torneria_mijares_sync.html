@@ -247,7 +247,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
       <label>¿Aplica ITBMS?</label>
       <select id="cot-tax" onchange="calcCot()"><option value="0">Sin impuesto</option><option value="0.07">ITBMS 7%</option></select>
       <label>Descripción del trabajo / Notas adicionales</label>
-      <textarea id="cot-notas" rows="14" style="min-height:320px;resize:vertical;font-size:14px;line-height:1.6" placeholder="Descripción detallada del trabajo, tiempo de entrega, forma de pago, validez..."></textarea>
+      <textarea id="cot-notas" rows="18" style="min-height:420px;resize:vertical;font-size:14px;line-height:1.6" placeholder="Descripción detallada del trabajo, tiempo de entrega, forma de pago, validez..."></textarea>
       <div class="flex-end">
         <button class="btn" onclick="calcCot()">🧮 Calcular</button>
         <button class="btn" onclick="previewDoc('cot')">👁 Vista previa</button>
@@ -956,6 +956,15 @@ function descargarImagen(canvas,nombre){
   const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download=nombre;a.click();
 }
 
+function autoAddClienteFromCot(cot){
+  const nombre=(cot.cli||'').trim();
+  if(!nombre)return;
+  if(CLI.some(c=>c.nombre.trim().toLowerCase()===nombre.toLowerCase()))return;
+  const obj={id:uid(),nombre,ruc:'',email:'',tel:cot.tel||'',dir:cot.dir||'',sector:''};
+  CLI.push(obj);
+  lsSet('tm_cli',CLI);
+  poblarSelCli();
+}
 async function saveCotizacion(){
   calcCot();
   const items=getItemsCot();
@@ -963,7 +972,8 @@ async function saveCotizacion(){
   const tax=+document.getElementById('cot-tax').value||0;
   const sub=items.reduce((a,i)=>a+i.t,0);
   const isEdit=!!_editingCotId;
-  const obj={id:_editingCotId||uid(),num:document.getElementById('cot-num').value||'',fecha:document.getElementById('cot-fecha').value||today(),cli:document.getElementById('cot-cli').value||'',tel:document.getElementById('cot-tel').value||'',dir:document.getElementById('cot-dir').value||'',items,sub,tax,itbms:sub*tax,total:sub+sub*tax,notas:document.getElementById('cot-notas').value||''};
+  const origCot=isEdit?COT.find(x=>x.id===_editingCotId):null;
+  const obj={id:_editingCotId||uid(),num:origCot?origCot.num:document.getElementById('cot-num').value||'',fecha:document.getElementById('cot-fecha').value||today(),cli:document.getElementById('cot-cli').value||'',tel:document.getElementById('cot-tel').value||'',dir:document.getElementById('cot-dir').value||'',items,sub,tax,itbms:sub*tax,total:sub+sub*tax,notas:document.getElementById('cot-notas').value||''};
   if(isEdit){
     COT=COT.map(x=>x.id===obj.id?obj:x);
     _editingCotId=null;
@@ -972,6 +982,7 @@ async function saveCotizacion(){
     COT.push(obj);
     document.getElementById('cot-num').value=nextNum(COT);
   }
+  autoAddClienteFromCot(obj);
   lsSet('tm_cot',COT);
   try{await api('saveCotizacion',obj);setSyncStatus('ok','✓ Guardado');}catch(e){setSyncStatus('err','⚠ Guardado local')}
   renderCotLista();
