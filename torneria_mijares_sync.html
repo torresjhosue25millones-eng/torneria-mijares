@@ -591,8 +591,10 @@ async function loadData(){
     // Servicios sincronizados (categoría especial) → van a SV, no a MV
     const filasSV=filas.filter(r=>r[4]===SV_CAT);
     const svFromGS=filasSV.map(r=>{
-      let extra={};try{extra=JSON.parse(r[5]||'{}');}catch(e){}
-      return{id:r[0],desc:r[2],v:+(r[3])||0,fecha:r[6],mat:extra.mat||0,tornero:extra.tornero||0,s:extra.s||0,a:extra.a||0,otro:extra.ot||0,fromGS:true};
+      const v=+(r[3])||0;
+      const matR=v*0.10;
+      const tornero=(v-matR)*0.40;
+      return{id:r[0],desc:r[2],v,fecha:r[6],mat:matR,tornero,s:0,a:0,otro:0,fromGS:true};
     });
     // Mezclar: los del GS tienen prioridad; agregar locales que no estén en GS
     const gsIds=new Set(svFromGS.map(s=>s.id));
@@ -693,8 +695,7 @@ async function saveServicio(){
   // Sincronizar con Google Sheets para que aparezca en todos los dispositivos
   setSyncStatus('ing','⟳ Guardando servicio...');
   try{
-    const gsObj={id:obj.id,tipo:'ingreso',desc,monto:v,cat:SV_CAT,
-      cli:JSON.stringify({mat:matR,tornero,s:sol,a:ay,ot}),prov:'',fecha,est:'cobrado'};
+    const gsObj={id:obj.id,tipo:'ingreso',desc,monto:v,cat:SV_CAT,cli:'',prov:'',fecha,est:'cobrado'};
     await api('saveMovimiento',gsObj);
     setSyncStatus('ok','✓ Servicio guardado y sincronizado');
   }catch(e){
@@ -725,12 +726,11 @@ async function migrarServiciosLocales(){
   for(const s of locales){
     st.textContent=`Subiendo ${ok+err+1} de ${locales.length}...`;
     try{
-      const gsObj={id:s.id,tipo:'ingreso',desc:s.desc,monto:s.v,cat:SV_CAT,
-        cli:JSON.stringify({mat:s.mat||0,tornero:s.tornero||0,s:s.s||0,a:s.a||0,ot:s.otro||0}),
-        prov:'',fecha:s.fecha,est:'cobrado'};
-      await api('saveMovimiento',gsObj);
+      const gsObj={id:s.id,tipo:'ingreso',desc:s.desc,monto:s.v,cat:SV_CAT,cli:'',prov:'',fecha:s.fecha,est:'cobrado'};
+      const res=await api('saveMovimiento',gsObj);
+      if(res&&res.error)throw new Error(res.error);
       s.fromGS=true;ok++;
-    }catch(e){err++;}
+    }catch(e){err++;st.textContent='Error: '+e.message;}
   }
   lsSet('tm_sv',SV);
   btn.disabled=false;
