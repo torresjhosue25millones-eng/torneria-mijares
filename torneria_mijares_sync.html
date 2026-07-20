@@ -242,7 +242,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
       <label>¿Aplica ITBMS?</label>
       <select id="cot-tax" onchange="calcCot()"><option value="0">Sin impuesto</option><option value="0.07">ITBMS 7%</option></select>
       <label>Descripción del trabajo / Notas adicionales</label>
-      <textarea id="cot-notas" rows="10" style="min-height:220px;resize:vertical" placeholder="Descripción detallada del trabajo, tiempo de entrega, forma de pago, validez..."></textarea>
+      <textarea id="cot-notas" rows="14" style="min-height:320px;resize:vertical;font-size:14px;line-height:1.6" placeholder="Descripción detallada del trabajo, tiempo de entrega, forma de pago, validez..."></textarea>
       <div class="flex-end">
         <button class="btn" onclick="calcCot()">🧮 Calcular</button>
         <button class="btn" onclick="previewDoc('cot')">👁 Vista previa</button>
@@ -309,6 +309,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
       <div class="card-title"><span class="dot"></span>Comisiones y sueldos</div>
       <div style="font-size:10px;color:var(--text3);margin-bottom:8px;font-family:'IBM Plex Mono',monospace">Calculado automáticamente sobre los ingresos del período</div>
       <div class="rl"><span style="color:var(--text2)">👷 Tornero (40% ingresos por servicio)</span><span id="cnt-tornero" style="color:var(--green);font-weight:700;font-size:15px">$0.00</span></div>
+      <div id="cnt-tornero-detalle" style="font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace;margin:-4px 0 6px 4px">Base: $0.00 en ingresos de servicio</div>
       <div class="rl"><span style="color:var(--text2)">🔧 Soldador</span><span id="cnt-soldador" style="color:var(--text2);font-weight:600">$0.00</span></div>
       <div class="rl"><span style="color:var(--text2)">🤝 Ayudante</span><span id="cnt-ayudante" style="color:var(--text2);font-weight:600">$0.00</span></div>
       <div class="rl"><span style="color:var(--text2)">💼 Sueldo fijo</span><span id="cnt-sueldo-fijo" style="color:var(--red)">$0.00</span></div>
@@ -509,7 +510,7 @@ function calcBanco(svArr,mvArr){
   const sueldoFijo=mvArr.filter(m=>m.tipo==='egreso'&&m.cat==='Sueldo fijo').reduce((a,m)=>a+m.monto,0);
   const soldAy=soldador+ayudante;
   const banco=cobradoSV+ingMV-egMV-tornero-soldAy-sueldoFijo;
-  return{cobrado:cobradoSV+ingMV,egMV,tornero,soldador,ayudante,sueldoFijo,soldAy,banco};
+  return{cobrado:cobradoSV+ingMV,egMV,tornero,ingServ,torneroSV,cobradoSV,soldador,ayudante,sueldoFijo,soldAy,banco};
 }
 
 function updMetrics(){
@@ -1015,6 +1016,8 @@ function updCont(){
   // r.banco = ingresos - gastos operativos - tornero 40% - soldador - ayudante - sueldo fijo
   bel.textContent=fmt(r.banco);bel.className='metric-value '+(r.banco>=0?'mv-green':'mv-red');
   document.getElementById('cnt-tornero').textContent=fmt(r.tornero);
+  const partesSV=r.torneroSV>0?` + ${fmt(r.torneroSV)} servicios locales`:'';
+  document.getElementById('cnt-tornero-detalle').textContent=`Base: ${fmt(r.ingServ)} ingresos GS${partesSV} × 40%`;
   document.getElementById('cnt-soldador').textContent=fmt(r.soldador||0);
   document.getElementById('cnt-ayudante').textContent=fmt(r.ayudante||0);
   document.getElementById('cnt-sueldo-fijo').textContent=fmt(r.sueldoFijo||0);
