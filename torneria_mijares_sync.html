@@ -615,7 +615,9 @@ async function loadData(){
     renderAll();
     const nI=MV.filter(m=>m.tipo==='ingreso').length;
     const nE=MV.filter(m=>m.tipo==='egreso').length;
-    setSyncStatus('ok','✓ Sync ('+nI+' ing, '+nE+' eg)');
+    const nSV=SV.filter(s=>s.fromGS).length;
+    setSyncStatus('ok','✓ Sync ('+nI+' ing, '+nE+' eg'+(nSV>0?', '+nSV+' serv':'')+')');
+    checkMigrateBanner();
   }catch(e){
     setSyncStatus('err','✗ Sin conexión');
     renderAll();
