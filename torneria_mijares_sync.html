@@ -104,9 +104,9 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .dh-info{flex:1}
 .dh-info h1{font-size:20px;font-weight:900;color:#1e3a5f;letter-spacing:1px;text-transform:uppercase}
 .dh-info p{font-size:10px;color:#555;margin-top:1px}
-.dh-num{background:#fff;border:1px solid #aaa;padding:6px 12px;text-align:center;min-width:110px}
+.dh-num{background:#fff;border:1px solid #aaa;padding:6px 10px;text-align:center;min-width:100px;max-width:130px}
 .dh-num .nl{font-size:9px;font-weight:bold;color:#555;text-transform:uppercase}
-.dh-num .nv{font-size:20px;font-weight:900;color:#c0392b}
+.dh-num .nv{font-size:15px;font-weight:900;color:#c0392b;word-break:break-all}
 .di{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #ddd}
 .dib{padding:8px 14px}
 .dib-label{font-size:9px;font-weight:bold;color:#666;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:2px;margin-bottom:5px}
@@ -210,7 +210,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <div class="card">
       <div class="card-title"><span class="dot"></span>Datos de cotización</div>
       <div class="row2">
-        <div><label>N° Cotización</label><input type="number" id="cot-num" placeholder="1007"></div>
+        <div><label>N° Cotización</label><input type="number" id="cot-num" placeholder="1001" style="font-size:20px;font-weight:700;text-align:center;color:var(--accent2)"></div>
         <div><label>Fecha</label><input type="date" id="cot-fecha"></div>
       </div>
       <label>Cliente (guardado)</label>
@@ -307,12 +307,13 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     </div>
     <div class="card">
       <div class="card-title"><span class="dot"></span>Comisiones y sueldos</div>
-      <div class="rl"><span style="color:var(--text2)">👷 Tornero (40% de ingresos por servicio)</span><span id="cnt-tornero" style="color:var(--green);font-weight:600">$0.00</span></div>
-      <div class="rl"><span style="color:var(--text2)">🔧 Soldador</span><span id="cnt-soldador" style="color:var(--text2)">$0.00</span></div>
-      <div class="rl"><span style="color:var(--text2)">🤝 Ayudante</span><span id="cnt-ayudante" style="color:var(--text2)">$0.00</span></div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px;font-family:'IBM Plex Mono',monospace">Calculado automáticamente sobre los ingresos del período</div>
+      <div class="rl"><span style="color:var(--text2)">👷 Tornero (40% ingresos por servicio)</span><span id="cnt-tornero" style="color:var(--green);font-weight:700;font-size:15px">$0.00</span></div>
+      <div class="rl"><span style="color:var(--text2)">🔧 Soldador</span><span id="cnt-soldador" style="color:var(--text2);font-weight:600">$0.00</span></div>
+      <div class="rl"><span style="color:var(--text2)">🤝 Ayudante</span><span id="cnt-ayudante" style="color:var(--text2);font-weight:600">$0.00</span></div>
       <div class="rl"><span style="color:var(--text2)">💼 Sueldo fijo</span><span id="cnt-sueldo-fijo" style="color:var(--red)">$0.00</span></div>
     </div>
-    <div class="card"><div class="card-title"><span class="dot"></span>Por categoría</div><div id="res-cats"></div></div>
+    <div class="card"><div class="card-title"><span class="dot"></span>Por categoría (Google Sheets)</div><div id="res-cats"></div></div>
   </div>
   <div id="sub-ing" class="sub">
     <div class="card">
@@ -446,7 +447,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 
 <script>
 const API='https://script.google.com/macros/s/AKfycbwwB1AQI3xY6wOh0GYUKy27jdcWg2keYf3YE-B45gVaMYCBiwrrmQ1NKgEgLwT3W6poZg/exec';
-const EMPRESA={nombre:'TORNERIA MIJARES',sub:'SERVICIOS METALMECANICOS',dir:'Calle 143 A Este Ciudad Radial, Panamá, Rep. Panamá',tel:'(507) 64386569',email:'torneriamijares@gmail.com',ruc:'13-NT-2-760427',ig:'@torneriamijares',banco:'Banco General — Cta: 0414980624169 — Yappy: 64386569 — A nombre de: JESUS MIJARES'};
+const EMPRESA={nombre:'TORNERIA MIJARES',sub:'SERVICIOS METALMECANICOS',dir:'Calle 143 A Este Ciudad Radial, Panamá, Rep. Panamá',tel:'(507) 64386569',email:'torneriamijares@gmail.com',ruc:'13-NT-2-760427',ig:'@torneriamijares',banco:'Banco General — Cta: 0414980624169 | BAC Panamá — Cta: 104368758 — Yappy: 64386569 — A nombre de: JESUS MIJARES'};
 const CATS_NO_TORNERO=['Aporte de capital / Préstamo','Aumento de capital','Ingreso de inversionista','Crédito recibido'];
 // Estas categorías de egreso se rastrean separado — no incluir en egMV para evitar doble conteo
 const CATS_PERSONAL=['Comision 40','Comisión 40%','Comision 40%','Comisión 40','Soldador','Ayudante','Sueldo fijo'];
@@ -758,8 +759,8 @@ function buildCotHtml(d){
       <div class="dib-row"><strong>Dirección:</strong>${d.dir||'—'}</div>
     </div>
     <div class="dib"><div class="dib-label">Datos de pago</div>
-      <div class="dib-row"><strong>Banco:</strong>Banco General</div>
-      <div class="dib-row"><strong>Cta:</strong>0414980624169</div>
+      <div class="dib-row"><strong>Banco General:</strong>Cta: 0414980624169</div>
+      <div class="dib-row"><strong>BAC Panamá:</strong>Cta: 104368758</div>
       <div class="dib-row"><strong>Yappy:</strong>64386569</div>
       <div class="dib-row"><strong>A nombre de:</strong>JESUS MIJARES</div>
     </div>
@@ -772,7 +773,8 @@ function buildCotHtml(d){
     <div class="dtot-row grand"><span>TOTAL:</span><span>$${d.total.toFixed(2)}</span></div>
   </div>
   <div class="dterms"><h4>Términos y condiciones</h4><ol>
-    <li>Esta cotización tiene validez de 30 días a partir de la fecha de emisión.</li>
+    <li>Esta cotización tiene validez de 15 días a partir de la fecha de emisión.</li>
+    <li>El tiempo de entrega aproximado es de 3 días hábiles a partir de la aprobación de la cotización, salvo trabajos de mayor envergadura.</li>
     <li>Los precios pueden variar según cambios en materiales o alcance del trabajo.</li>
     <li>Se requiere 50% de anticipo para iniciar el trabajo.</li>
     <li>El saldo restante se cancela al momento de la entrega.</li>
@@ -801,6 +803,7 @@ function buildRecHtml(d){
   <div class="dib" style="padding:10px 14px;border-bottom:1px solid #ddd"><div class="dib-label">Concepto</div><p style="font-size:12px;color:#333">${d.concepto||'Pago por servicios de tornería y metalmecánica'}</p></div>
   <div class="dib" style="padding:10px 14px;border-bottom:1px solid #ddd"><div class="dib-label">La suma de</div><p style="font-size:13px;font-weight:bold;color:#1e3a5f;text-transform:uppercase">${numToLetras(d.abono)} (${fmt(d.abono)})</p></div>
   ${d.obs?`<div class="dobs"><strong>Observaciones</strong>${d.obs}</div>`:''}
+  <div class="dib" style="padding:10px 14px;border-bottom:1px solid #ddd"><div class="dib-label">Datos de pago</div><p style="font-size:11px;color:#333;line-height:1.6">Banco General — Cta: 0414980624169<br>BAC Panamá — Cta: 104368758<br>Yappy: 64386569 — A nombre de: JESUS MIJARES</p></div>
   <div class="dsig"><div class="dsig-block"><div class="dsig-line">Firma — Tornería Mijares</div></div><div class="dsig-block"><div class="dsig-line">Firma del cliente</div></div></div>`;
 }
 
