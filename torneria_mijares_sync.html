@@ -597,7 +597,8 @@ async function loadData(){
     // La API devuelve {"datos":[[id,tipo,desc,monto,cat,cli_prov,fecha,est],...]}
     const filas=d.datos||[];
     // Servicios sincronizados (categoría especial) → van a SV, no a MV
-    const filasSV=filas.filter(r=>r[4]===SV_CAT||(r[4]===SV_GAS_CAT&&r[5]===SV_GAS_CLI));
+    const isSVRow=r=>r[4]===SV_CAT||(r[4]===SV_GAS_CAT&&r[5]===SV_GAS_CLI)||r[0].toString().startsWith('sv-');
+    const filasSV=filas.filter(isSVRow);
     const svFromGS=filasSV.map(r=>{
       const v=+(r[3])||0;
       const tornero=v*0.40;
@@ -605,11 +606,11 @@ async function loadData(){
     });
     // Mezclar: los del GS tienen prioridad; agregar locales que no estén en GS
     const gsIds=new Set(svFromGS.map(s=>s.id));
-    const svLocal=lsGet('tm_sv').filter(s=>!gsIds.has(s.id));
+    const svLocal=lsGet('tm_sv').filter(s=>!gsIds.has(s.id)&&!gsIds.has('sv-'+s.id));
     SV=[...svFromGS,...svLocal];
     lsSet('tm_sv',SV); // actualizar localStorage con datos del GS
     // Movimientos normales (excluir servicios app)
-    MV=filas.filter(r=>r[4]!==SV_CAT&&!(r[4]===SV_GAS_CAT&&r[5]===SV_GAS_CLI)).map(row=>({
+    MV=filas.filter(r=>!isSVRow(r)).map(row=>({
       id:row[0],
       tipo:row[1],
       desc:row[2],
@@ -700,7 +701,7 @@ async function saveServicio(){
   // Sincronizar con Google Sheets para que aparezca en todos los dispositivos
   setSyncStatus('ing','⟳ Guardando servicio...');
   try{
-    const gsObj={id:obj.id,tipo:'ingreso',desc,monto:v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha,est:'Pagado Total'};
+    const gsObj={id:'sv-'+obj.id,tipo:'ingreso',desc,monto:v,cat:'Servicios',cli:'Tornero App',prov:'',fecha,est:'Pagado Total'};
     await api('saveMovimiento',gsObj);
     setSyncStatus('ok','✓ Servicio guardado y sincronizado');
   }catch(e){
@@ -719,17 +720,18 @@ async function delS(id){
 async function forzarResincronizar(){
   if(!SV.length){alert('No hay servicios guardados en este dispositivo');return}
   if(!confirm('¿Re-subir todos los '+SV.length+' servicios al servidor?'))return;
-  let ok=0,err=0;
+  let ok=0,err=0,msgs=[];
   for(const s of SV){
     try{
-      const gsObj={id:s.id,tipo:'ingreso',desc:s.desc,monto:s.v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha:s.fecha,est:'Pagado Total'};
+      const gsObj={id:'sv-'+s.id,tipo:'ingreso',desc:s.desc,monto:s.v,cat:'Servicios',cli:'Tornero App',prov:'',fecha:s.fecha,est:'Pagado Total'};
       const res=await api('saveMovimiento',gsObj);
+      msgs.push((s.desc||'').substring(0,20)+': '+JSON.stringify(res));
       if(res&&res.error)throw new Error(res.error);
       s.fromGS=true;ok++;
-    }catch(e){err++;}
+    }catch(e){err++;msgs.push('ERROR: '+e.message);}
   }
   lsSet('tm_sv',SV);
-  alert('✓ '+ok+' servicios subidos'+(err>0?' | ✗ '+err+' con error':''));
+  alert('Resultado:\n'+msgs.join('\n')+'\n\n✓ '+ok+' ok | ✗ '+err+' error');
   if(ok>0){checkMigrateBanner();updMetrics();updCont();}
 }
 function checkMigrateBanner(){
