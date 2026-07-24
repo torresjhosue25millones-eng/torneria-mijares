@@ -608,7 +608,23 @@ async function loadData(){
     const gsIds=new Set(svFromGS.map(s=>s.id));
     const svLocal=lsGet('tm_sv').filter(s=>!gsIds.has(s.id)&&!gsIds.has('sv-'+s.id));
     SV=[...svFromGS,...svLocal];
-    lsSet('tm_sv',SV); // actualizar localStorage con datos del GS
+    lsSet('tm_sv',SV);
+    // Cargar servicios desde hoja "servicios" del GAS (tabla separada de movimientos)
+    // Columnas: [id, descripcion, tipo, factura, fecha, monto, tornero, admin, material, soldador, ayudante, otro]
+    try{
+      const r2=await fetch(API+'?tabla=servicios');
+      const d2=await r2.json();
+      const rowsSV=(d2.datos||[]).slice(1).filter(r=>r[0]);
+      const normalId=x=>String(x).replace(/^sv-/,'');
+      const svFromDB=rowsSV.map(r=>{
+        const fecha=String(r[4]||'').replace(/T.*/,'');
+        return{id:String(r[0]),desc:String(r[1]||''),v:+(r[5])||0,fecha,mat:+(r[8])||0,tornero:+(r[6])||0,s:+(r[9])||0,a:+(r[10])||0,otro:+(r[11])||0,fromGS:true};
+      });
+      const dbNormIds=new Set(svFromDB.map(s=>normalId(s.id)));
+      const svOthers=SV.filter(s=>!dbNormIds.has(normalId(s.id)));
+      SV=[...svFromDB,...svOthers];
+      lsSet('tm_sv',SV);
+    }catch(e2){}
     // Movimientos normales (excluir servicios app)
     MV=filas.filter(r=>!isSVRow(r)).map(row=>({
       id:row[0],
