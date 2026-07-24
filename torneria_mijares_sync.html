@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -700,7 +700,7 @@ async function saveServicio(){
   // Sincronizar con Google Sheets para que aparezca en todos los dispositivos
   setSyncStatus('ing','⟳ Guardando servicio...');
   try{
-    const gsObj={id:obj.id,tipo:'ingreso',desc,monto:v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha,est:'cobrado'};
+    const gsObj={id:obj.id,tipo:'ingreso',desc,monto:v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha,est:'Pagado Total'};
     await api('saveMovimiento',gsObj);
     setSyncStatus('ok','✓ Servicio guardado y sincronizado');
   }catch(e){
@@ -722,7 +722,7 @@ async function forzarResincronizar(){
   let ok=0,err=0;
   for(const s of SV){
     try{
-      const gsObj={id:s.id,tipo:'ingreso',desc:s.desc,monto:s.v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha:s.fecha,est:'cobrado'};
+      const gsObj={id:s.id,tipo:'ingreso',desc:s.desc,monto:s.v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha:s.fecha,est:'Pagado Total'};
       const res=await api('saveMovimiento',gsObj);
       if(res&&res.error)throw new Error(res.error);
       s.fromGS=true;ok++;
@@ -747,7 +747,7 @@ async function migrarServiciosLocales(){
   for(const s of locales){
     st.textContent=`Subiendo ${ok+err+1} de ${locales.length}...`;
     try{
-      const gsObj={id:s.id,tipo:'ingreso',desc:s.desc,monto:s.v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha:s.fecha,est:'cobrado'};
+      const gsObj={id:s.id,tipo:'ingreso',desc:s.desc,monto:s.v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha:s.fecha,est:'Pagado Total'};
       const res=await api('saveMovimiento',gsObj);
       if(res&&res.error)throw new Error(res.error);
       s.fromGS=true;ok++;

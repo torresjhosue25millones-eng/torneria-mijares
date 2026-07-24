@@ -1,4 +1,4 @@
-const CACHE = 'tm-v4';
+const CACHE = 'tm-v5';
 const SHELL = [
   '/torneria-mijares/torneria_mijares_sync.html',
   '/torneria-mijares/manifest.json',
