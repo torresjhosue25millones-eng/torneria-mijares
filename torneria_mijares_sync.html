@@ -720,8 +720,8 @@ async function saveServicio(){
     }
     try{
       const s=SV[idx]||{};
-      const gsId=s.fromGS?String(s.id):'sv-'+s.id;
-      const gsObj={id:gsId,tipo:'ingreso',desc,monto:v,cat:'Servicios',cli:'Tornero App',prov:'',fecha,est:'Pagado Total'};
+      const gsId=s.fromGS?String(s.id):String(s.id);
+      const gsObj={id:gsId,tipo:'ingreso',desc,monto:v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha,est:'Pagado Total'};
       await api('saveMovimiento',gsObj);
       setSyncStatus('ok','✓ Servicio actualizado');
     }catch(e){setSyncStatus('err','✗ Actualizado local (sin conexión)');}
@@ -733,7 +733,7 @@ async function saveServicio(){
     SV.push(obj);
     lsSet('tm_sv',SV);
     try{
-      const gsObj={id:'sv-'+obj.id,tipo:'ingreso',desc,monto:v,cat:'Servicios',cli:'Tornero App',prov:'',fecha,est:'Pagado Total'};
+      const gsObj={id:obj.id,tipo:'ingreso',desc,monto:v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha,est:'Pagado Total'};
       await api('saveMovimiento',gsObj);
       setSyncStatus('ok','✓ Servicio guardado y sincronizado');
     }catch(e){setSyncStatus('err','✗ Guardado local (sin conexión)');}
@@ -778,7 +778,7 @@ async function forzarResincronizar(){
   let ok=0,err=0,msgs=[];
   for(const s of SV){
     try{
-      const gsObj={id:'sv-'+s.id,tipo:'ingreso',desc:s.desc,monto:s.v,cat:'Servicios',cli:'Tornero App',prov:'',fecha:s.fecha,est:'Pagado Total'};
+      const gsObj={id:s.id,tipo:'ingreso',desc:s.desc,monto:s.v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha:s.fecha,est:'Pagado Total'};
       const res=await api('saveMovimiento',gsObj);
       msgs.push((s.desc||'').substring(0,20)+': '+JSON.stringify(res));
       if(res&&res.error)throw new Error(res.error);
