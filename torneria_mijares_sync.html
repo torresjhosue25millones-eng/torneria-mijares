@@ -633,6 +633,22 @@ async function loadData(){
       SV=[...svFromDB,...svOthers];
       lsSet('tm_sv',SV);
     }catch(e2){}
+    // Cargar cotizaciones desde hoja "cotizaciones" del GAS
+    try{
+      const rc=await fetch(API+'?tabla=cotizaciones');
+      const dc=await rc.json();
+      const rowsCOT=(dc.datos||[]).slice(1).filter(r=>r[0]);
+      const cotFromDB=rowsCOT.map(r=>{
+        try{const j=String(r[1]||'');if(j.startsWith('{'))return JSON.parse(j);return null;}
+        catch(e){return null;}
+      }).filter(Boolean);
+      if(cotFromDB.length>0){
+        const dbCotIds=new Set(cotFromDB.map(c=>String(c.id)));
+        const cotLocal=lsGet('tm_cot').filter(c=>!dbCotIds.has(String(c.id)));
+        COT=[...cotFromDB,...cotLocal];
+        lsSet('tm_cot',COT);
+      }
+    }catch(ec){}
     // Movimientos normales (excluir servicios app)
     MV=filas.filter(r=>!isSVRow(r)).map(row=>({
       id:row[0],
