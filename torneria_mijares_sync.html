@@ -577,6 +577,14 @@ async function api(action,data){
   const r=await fetch(API+'?action='+action,{method:'POST',body:JSON.stringify(data)});
   return r.json();
 }
+async function apiGuardarServicio(s){
+  const v=+(s.v)||0;
+  const tornero=v*0.40;
+  const admin=v*0.05;
+  const fila=[s.id,s.desc||'','sin-factura','',s.fecha||'',v,tornero,admin,+(s.mat)||0,+(s.s)||0,+(s.a)||0,+(s.otro)||0];
+  const r=await fetch(API,{method:'POST',body:JSON.stringify({acción:'guardar',tabla:'servicios',fila,id:s.id})});
+  return r.json();
+}
 function lsGet(k){try{return JSON.parse(localStorage.getItem(k)||'[]');}catch(e){return[];}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 async function loadData(){
@@ -720,9 +728,7 @@ async function saveServicio(){
     }
     try{
       const s=SV[idx]||{};
-      const gsId=s.fromGS?String(s.id):String(s.id);
-      const gsObj={id:gsId,tipo:'ingreso',desc,monto:v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha,est:'Pagado Total'};
-      await api('saveMovimiento',gsObj);
+      await apiGuardarServicio(SV[idx]);
       setSyncStatus('ok','✓ Servicio actualizado');
     }catch(e){setSyncStatus('err','✗ Actualizado local (sin conexión)');}
     _editingSvId=null;
@@ -733,8 +739,7 @@ async function saveServicio(){
     SV.push(obj);
     lsSet('tm_sv',SV);
     try{
-      const gsObj={id:obj.id,tipo:'ingreso',desc,monto:v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha,est:'Pagado Total'};
-      await api('saveMovimiento',gsObj);
+      await apiGuardarServicio(obj);
       setSyncStatus('ok','✓ Servicio guardado y sincronizado');
     }catch(e){setSyncStatus('err','✗ Guardado local (sin conexión)');}
   }
@@ -778,8 +783,7 @@ async function forzarResincronizar(){
   let ok=0,err=0,msgs=[];
   for(const s of SV){
     try{
-      const gsObj={id:s.id,tipo:'ingreso',desc:s.desc,monto:s.v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha:s.fecha,est:'Pagado Total'};
-      const res=await api('saveMovimiento',gsObj);
+      const res=await apiGuardarServicio(s);
       msgs.push((s.desc||'').substring(0,20)+': '+JSON.stringify(res));
       if(res&&res.error)throw new Error(res.error);
       s.fromGS=true;ok++;
@@ -804,8 +808,7 @@ async function migrarServiciosLocales(){
   for(const s of locales){
     st.textContent=`Subiendo ${ok+err+1} de ${locales.length}...`;
     try{
-      const gsObj={id:s.id,tipo:'ingreso',desc:s.desc,monto:s.v,cat:SV_GAS_CAT,cli:SV_GAS_CLI,prov:'',fecha:s.fecha,est:'Pagado Total'};
-      const res=await api('saveMovimiento',gsObj);
+      const res=await apiGuardarServicio(s);
       if(res&&res.error)throw new Error(res.error);
       s.fromGS=true;ok++;
     }catch(e){err++;st.textContent='Error: '+e.message;}
