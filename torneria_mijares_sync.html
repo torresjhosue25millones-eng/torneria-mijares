@@ -139,6 +139,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="header-text"><h1>Tornería Mijares</h1><p>Servicios metalmecanicos · Panamá</p></div>
   <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
     <div class="sync-status sync-ing" id="sync-status">⟳ Cargando...</div>
+    <button id="installBtnConta" onclick="installAppConta()" style="display:none;background:var(--accent);border:none;color:var(--steel);font-size:11px;font-weight:600;cursor:pointer;padding:6px 10px;border-radius:6px;white-space:nowrap" title="Instalar app">📲 Instalar</button>
     <button onclick="loadData()" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:4px;line-height:1" title="Recargar datos">↻</button>
   </div>
 </div>
@@ -1464,6 +1465,18 @@ document.addEventListener('DOMContentLoaded',()=>{
     navigator.serviceWorker.register('/torneria-mijares/sw.js').catch(()=>{});
   }
 });
+let deferredInstallPromptConta=null;
+window.addEventListener('beforeinstallprompt',(e)=>{
+  e.preventDefault();
+  deferredInstallPromptConta=e;
+  const btn=document.getElementById('installBtnConta');
+  if(btn)btn.style.display='inline-block';
+});
+function installAppConta(){
+  if(!deferredInstallPromptConta)return;
+  deferredInstallPromptConta.prompt();
+  deferredInstallPromptConta.userChoice.then(()=>{deferredInstallPromptConta=null;});
+}
 </script>
 </body>
 </html>
