@@ -588,6 +588,42 @@ async function apiGuardarServicio(s){
 }
 function lsGet(k){try{return JSON.parse(localStorage.getItem(k)||'[]');}catch(e){return[];}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function parseCotRowFromSheet(r){
+  const id=String(r[0]||'')||('rec'+Math.random().toString(36).slice(2));
+  let items=[],cli='',fecha='',total=0,itemsIdx=-1;
+  for(let i=0;i<r.length;i++){
+    const s=String(r[i]==null?'':r[i]).trim();
+    if(s.startsWith('[')||s.startsWith('{')){
+      try{
+        const parsed=JSON.parse(s);
+        const arr=Array.isArray(parsed)?parsed:(parsed&&Array.isArray(parsed.items)?parsed.items:null);
+        if(arr){
+          items=arr;itemsIdx=i;
+          if(!Array.isArray(parsed)){
+            if(parsed.cli)cli=parsed.cli;
+            if(parsed.fecha)fecha=parsed.fecha;
+            if(parsed.total)total=parsed.total;
+          }
+        }
+      }catch(e){}
+    }
+  }
+  let bestNum=0,bestCliLen=0;
+  for(let i=0;i<r.length;i++){
+    if(i===itemsIdx||i===0||i===1)continue;
+    const s=String(r[i]==null?'':r[i]).trim();
+    if(!s)continue;
+    if(/^\d{4}-\d{2}-\d{2}/.test(s)){if(!fecha)fecha=s.replace(/T.*/,'');continue;}
+    if(/^-?\d+(\.\d+)?$/.test(s)){
+      const num=parseFloat(s);
+      if(num>bestNum){bestNum=num;total=num;}
+      continue;
+    }
+    if(s.length>bestCliLen){bestCliLen=s.length;cli=s;}
+  }
+  if(!total&&items.length)total=items.reduce((a,it)=>a+(+it.t||+it.tot||(+it.q*+it.p)||0),0);
+  return{id,num:'',fecha,cli,tel:'',dir:'',items,sub:total,tax:0,itbms:0,total,notas:''};
+}
 async function loadData(){
   // Carga inmediata desde localStorage
   SV=lsGet('tm_sv');
@@ -635,19 +671,27 @@ async function loadData(){
       lsSet('tm_sv',SV);
     }catch(e2){}
     // Cargar cotizaciones desde hoja "cotizaciones" del GAS
+    // Nota: el orden de columnas ha variado entre versiones de la app, así que
+    // cada fila se interpreta buscando su contenido (fecha, texto, número, JSON de items)
+    // en vez de asumir una posición fija.
     try{
       const rc=await fetch(API+'?tabla=cotizaciones');
       const dc=await rc.json();
-      const rowsCOT=(dc.datos||[]).slice(1).filter(r=>r[0]);
-      const cotFromDB=rowsCOT.map(r=>{
-        try{const j=String(r[1]||'');if(j.startsWith('{'))return JSON.parse(j);return null;}
-        catch(e){return null;}
-      }).filter(Boolean);
+      const rowsCOT=(dc.datos||[]).slice(1).filter(r=>r[0]!==undefined&&r[0]!=='');
+      const cotFromDBRaw=rowsCOT.map(parseCotRowFromSheet).filter(c=>c.items.length>0||c.cli);
+      const vistos=new Set();
+      const cotFromDB=cotFromDBRaw.filter(c=>{
+        const clave=c.cli+'|'+c.fecha+'|'+c.total+'|'+JSON.stringify(c.items);
+        if(vistos.has(clave))return false;
+        vistos.add(clave);
+        return true;
+      });
       if(cotFromDB.length>0){
         const dbCotIds=new Set(cotFromDB.map(c=>String(c.id)));
         const cotLocal=lsGet('tm_cot').filter(c=>!dbCotIds.has(String(c.id)));
         COT=[...cotFromDB,...cotLocal];
         lsSet('tm_cot',COT);
+        renderCotLista();
       }
     }catch(ec){}
     // Movimientos normales (excluir servicios app)
