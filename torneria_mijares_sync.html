@@ -529,6 +529,7 @@ function mesesEnDatos(){
   });
   return[...set].sort().reverse();
 }
+let _servMesDefaultApplied=false;
 function poblarFiltros(){
   const meses=mesesEnDatos();
   ['filtro-serv-mes','filtro-res-mes','filtro-mov-mes','filtro-rep-mes'].forEach(id=>{
@@ -538,6 +539,14 @@ function poblarFiltros(){
     meses.forEach(ym=>{const o=new Option(labelMes(ym),ym);el.add(o)});
     if(val)el.value=val;
   });
+  if(!_servMesDefaultApplied){
+    _servMesDefaultApplied=true;
+    const elSv=document.getElementById('filtro-serv-mes');
+    if(elSv&&!elSv.value){
+      const hoy=today().slice(0,7);
+      if(meses.includes(hoy))elSv.value=hoy;
+    }
+  }
 }
 
 function calcBanco(svArr,mvArr){
@@ -794,10 +803,17 @@ function renderAll(){
 
 function renderSV(){
   const mes=document.getElementById('filtro-serv-mes').value;
-  const lista=filtrarPorMes(SV,mes).slice().reverse();
+  let lista=filtrarPorMes(SV,mes);
+  if(!mes){
+    // Sin un mes elegido, no mezclar aquí los meses que ya se cerraron
+    // (esos quedan en Reporte/Cierre; esta vista es el trabajo del mes en curso)
+    const cerrados=new Set(CIERRES.map(c=>c.mes));
+    lista=lista.filter(s=>!cerrados.has(String(s.fecha||'').slice(0,7)));
+  }
+  lista=lista.slice().reverse();
   const el=document.getElementById('t-servicios');
   if(!lista.length){
-    el.innerHTML='<div class="empty">// Sin servicios'+(mes?' en '+labelMes(mes):'')+`</div>`;
+    el.innerHTML='<div class="empty">// Sin servicios'+(mes?' en '+labelMes(mes):' pendientes de cerrar')+`</div>`;
     return;
   }
   el.innerHTML=`<table><thead><tr><th>Servicio</th><th>Cobrado</th><th>👷 Tornero</th><th>🏦 Al banco</th><th></th></tr></thead><tbody>
@@ -1330,9 +1346,18 @@ async function saveMov(tipo){
 function renderMov(){
   const mes=document.getElementById('filtro-mov-mes').value;
   const tipo=document.getElementById('filtro-mov-tipo').value;
-  let lista=filtrarPorMes(MV,mes);
+  let lista=filtrarPorMes(MV,mes).map(m=>({...m}));
+  // Mostrar aquí también los servicios cobrados, como una sola lista de movimientos de dinero
+  // (esto es solo para verlos juntos; los cálculos de Reporte/Cierre siguen leyendo SV y MV por separado, sin duplicar)
+  if(!tipo||tipo==='ingreso'){
+    const svLista=filtrarPorMes(SV,mes).map(s=>({
+      id:s.id,tipo:'ingreso',desc:'🔧 '+(s.desc||'Servicio'),cat:'Servicio',
+      monto:s.v||0,fecha:s.fecha,est:'Pagado Total',_serv:true
+    }));
+    lista=[...lista,...svLista];
+  }
   if(tipo)lista=lista.filter(m=>m.tipo===tipo);
-  lista=lista.slice().reverse();
+  lista=lista.sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))).reverse();
   const el=document.getElementById('t-mov');
   if(!lista.length){el.innerHTML='<div class="empty">// Sin movimientos</div>';return}
   el.innerHTML=`<table><thead><tr><th>Descripción</th><th>Cat</th><th>Monto</th><th>Est</th><th></th></tr></thead><tbody>
@@ -1342,7 +1367,7 @@ function renderMov(){
     <td style="font-family:'IBM Plex Mono',monospace;color:${m.tipo==='ingreso'?'var(--green)':'var(--red)'}">
       ${m.tipo==='ingreso'?'+':'−'}${fmt(m.monto)}</td>
     <td><span class="badge ${m.est==='Pagado Total'?'bg':m.est==='Pendiente'?'br':'ba'}">${m.est?.slice(0,7)||'—'}</span></td>
-    <td><button class="btn btn-danger" onclick="delMov('${m.id}')">✕</button></td>
+    <td>${m._serv?'<span style="font-size:10px;color:var(--text3)">Servicio</span>':`<button class="btn btn-danger" onclick="delMov('${m.id}')">✕</button>`}</td>
   </tr>`).join('')}</tbody></table>`;
 }
 async function delMov(id){
