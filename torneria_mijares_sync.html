@@ -1361,12 +1361,24 @@ function renderMov(){
   let lista=filtrarPorMes(MV,mes).map(m=>({...m}));
   // Mostrar aquí también los servicios cobrados, como una sola lista de movimientos de dinero
   // (esto es solo para verlos juntos; los cálculos de Reporte/Cierre siguen leyendo SV y MV por separado, sin duplicar)
+  // También se muestran aparte las comisiones (tornero/soldador/ayudante) que la app resta
+  // de cada servicio, para que sumando todo lo que aparece aquí sí dé el mismo total que "Banco".
+  const svMes=filtrarPorMes(SV,mes);
   if(!tipo||tipo==='ingreso'){
-    const svLista=filtrarPorMes(SV,mes).map(s=>({
+    const svLista=svMes.map(s=>({
       id:s.id,tipo:'ingreso',desc:'🔧 '+(s.desc||'Servicio'),cat:'Servicio',
       monto:s.v||0,fecha:s.fecha,est:'Pagado Total',_serv:true
     }));
     lista=[...lista,...svLista];
+  }
+  if(!tipo||tipo==='egreso'){
+    const comisiones=[];
+    svMes.forEach(s=>{
+      if(s.tornero>0)comisiones.push({id:s.id+'-t',tipo:'egreso',desc:'👷 Comisión tornero (40%) — '+(s.desc||'Servicio'),cat:'Comisión 40%',monto:s.tornero,fecha:s.fecha,est:'Pagado Total',_serv:true});
+      if(s.s>0)comisiones.push({id:s.id+'-s',tipo:'egreso',desc:'🔧 Soldador — '+(s.desc||'Servicio'),cat:'Soldador',monto:s.s,fecha:s.fecha,est:'Pagado Total',_serv:true});
+      if(s.a>0)comisiones.push({id:s.id+'-a',tipo:'egreso',desc:'🤝 Ayudante — '+(s.desc||'Servicio'),cat:'Ayudante',monto:s.a,fecha:s.fecha,est:'Pagado Total',_serv:true});
+    });
+    lista=[...lista,...comisiones];
   }
   if(tipo)lista=lista.filter(m=>m.tipo===tipo);
   lista=lista.sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))).reverse();
