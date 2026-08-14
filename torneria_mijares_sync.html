@@ -728,10 +728,22 @@ async function loadData(){
       const rz=await fetch(API+'?tabla=cierres');
       const dz=await rz.json();
       const rowsZ=(dz.datos||[]).filter(r=>r[0]&&r[0]!=='id'&&r[1]&&r[1]!=='mes');
-      const cierresFromDB=rowsZ.map(r=>({
-        id:String(r[0]),mes:String(r[1]||''),ingresos:+r[2]||0,egresos:+r[3]||0,tornero:+r[4]||0,
+      // Google Sheets a veces convierte "2026-07" en una fecha completa (2026-07-01T...);
+      // aquí siempre nos quedamos solo con "YYYY-MM" para poder comparar bien los meses.
+      let cierresFromDB=rowsZ.map(r=>({
+        id:String(r[0]),mes:String(r[1]||'').slice(0,7),ingresos:+r[2]||0,egresos:+r[3]||0,tornero:+r[4]||0,
         tasaIsr:+r[5]||0,isr:+r[6]||0,utilidad:+r[7]||0,fechaCierre:String(r[8]||'').replace(/T.*/,'')
       })).filter(c=>c.mes);
+      // Si un mes quedó duplicado en la hoja (por ejemplo, cerrado dos veces sin darse cuenta),
+      // nos quedamos solo con un registro por mes para no mostrarlo repetido.
+      {
+        const vistosMes=new Set();
+        cierresFromDB=cierresFromDB.filter(c=>{
+          if(vistosMes.has(c.mes))return false;
+          vistosMes.add(c.mes);
+          return true;
+        });
+      }
       if(cierresFromDB.length>0){
         const dbMeses=new Set(cierresFromDB.map(c=>c.mes));
         const local=lsGet('tm_cierres').filter(c=>!dbMeses.has(c.mes));
@@ -1566,6 +1578,8 @@ function calcCierre(){
     ${yaCerrado?`<div class="rl" style="color:var(--accent2)"><span>✓ Mes cerrado el ${fmtFecha(yaCerrado.fechaCierre)}</span><span></span></div>`:''}`;
   const cats={};
   mvA.forEach(m=>{const k=m.cat||'Sin cat';if(!cats[k])cats[k]={t:0,tipo:m.tipo};cats[k].t+=m.monto;cats[k].tipo=m.tipo;});
+  const cobradoServ=svA.reduce((a,s)=>a+(s.v||0),0);
+  if(cobradoServ>0)cats['Servicios']={t:cobradoServ,tipo:'ingreso'};
   const sorted=Object.entries(cats).sort((a,b)=>b[1].t-a[1].t);
   document.getElementById('cierre-tabla').innerHTML=sorted.length?sorted.map(([k,v])=>`<div class="rl"><span style="color:var(--text2)">${k}</span><span style="color:${v.tipo==='ingreso'?'var(--green)':'var(--red)'}">${fmt(v.t)}</span></div>`).join(''):'<div class="empty">// Sin datos</div>';
   const btn=document.getElementById('btn-cerrar-mes');
@@ -1600,7 +1614,13 @@ async function cerrarMes(){
 function renderCierresHistorial(){
   const el=document.getElementById('cierre-historial');
   if(!el)return;
-  const ordenado=CIERRES.slice().sort((a,b)=>String(b.mes).localeCompare(String(a.mes)));
+  const vistos=new Set();
+  const sinDuplicados=CIERRES.filter(c=>{
+    if(vistos.has(c.mes))return false;
+    vistos.add(c.mes);
+    return true;
+  });
+  const ordenado=sinDuplicados.sort((a,b)=>String(b.mes).localeCompare(String(a.mes)));
   el.innerHTML=ordenado.length?ordenado.map(c=>`<div class="rl"><span>${labelMes(c.mes)}</span><span style="color:${c.utilidad>=0?'var(--green)':'var(--red)'}">${fmt(c.utilidad)}</span></div>`).join(''):'<div class="empty">// Aún no hay meses cerrados</div>';
 }
 function renderGastosFijos(){
