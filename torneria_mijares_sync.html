@@ -690,14 +690,24 @@ async function loadData(){
       const d2=await r2.json();
       const rowsSV=(d2.datos||[]).slice(1).filter(r=>r[0]);
       const normalId=x=>String(x).replace(/^sv-/,'');
+      const svBorrados=new Set(lsGet('tm_sv_borrados').map(String));
       const svFromDB=rowsSV.map(r=>{
         const fecha=String(r[4]||'').replace(/T.*/,'');
         return{id:String(r[0]),desc:String(r[1]||''),v:+(r[5])||0,fecha,mat:+(r[8])||0,tornero:+(r[6])||0,s:+(r[9])||0,a:+(r[10])||0,otro:+(r[11])||0,fromGS:true};
-      });
+      }).filter(s=>!svBorrados.has(normalId(s.id)));
       const dbNormIds=new Set(svFromDB.map(s=>normalId(s.id)));
-      const svOthers=SV.filter(s=>!dbNormIds.has(normalId(s.id)));
+      const svOthers=SV.filter(s=>!dbNormIds.has(normalId(s.id))&&!svBorrados.has(normalId(s.id)));
       SV=[...svFromDB,...svOthers];
       lsSet('tm_sv',SV);
+      // Reintentar borrados de servicios que quedaron pendientes
+      if(svBorrados.size){
+        const sigSvBorrados=[];
+        for(const bid of svBorrados){
+          try{await fetch(API,{method:'POST',body:JSON.stringify({acción:'eliminar',tabla:'servicios',id:bid})});}
+          catch(e){sigSvBorrados.push(bid);}
+        }
+        lsSet('tm_sv_borrados',sigSvBorrados);
+      }
     }catch(e2){}
     // Cargar cotizaciones desde hoja "cotizaciones" del GAS
     // Nota: el orden de columnas ha variado entre versiones de la app, así que
@@ -902,6 +912,13 @@ async function delS(id){
   if(!confirm('¿Eliminar servicio?'))return;
   SV=SV.filter(s=>s.id!==id);
   lsSet('tm_sv',SV);
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify({acción:'eliminar',tabla:'servicios',id})});
+  }catch(e){
+    const borr=lsGet('tm_sv_borrados');
+    borr.push(id);
+    lsSet('tm_sv_borrados',borr);
+  }
   updMetrics();renderSV();
 }
 function editS(id){
